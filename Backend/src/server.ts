@@ -10,9 +10,7 @@ import errorHandler from "@/common/middleware/errorHandler";
 import rateLimiter from "@/common/middleware/rateLimiter";
 import requestLogger from "@/common/middleware/requestLogger";
 import { env } from "@/common/utils/envConfig";
-import { adminTodoRouter } from "./api/admin/todo/todoRouter";
 import { authRouter } from "./api/auth/authRouter";
-import { todoRouter } from "./api/todo/todoRouter";
 
 const logger = pino({ name: "server start" });
 const app: Express = express();
@@ -33,8 +31,8 @@ app.use(requestLogger);
 // Routes
 app.use("/health-check", healthCheckRouter);
 app.use("/users", userRouter);
-app.use("/todos", todoRouter);
-app.use("/admin/todos", adminTodoRouter);
+// app.use("/admin/logs", logsRouter);
+// app.use("/admin/todos", adminTodoRouter);
 app.use("/auth", authRouter);
 
 // Swagger UI

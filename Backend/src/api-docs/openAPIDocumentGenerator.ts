@@ -1,18 +1,16 @@
 import { OpenAPIRegistry, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 
-import { adminTodoRegistry } from "@/api/admin/todo/todoRouter";
 import { userRegistry } from "@/api/admin/user/userRouter";
 import { authRegistry } from "@/api/auth/authRouter";
 import { healthCheckRegistry } from "@/api/healthCheck/healthCheckRouter";
-import { todoRegistry } from "@/api/todo/todoRouter";
+import { logsRegistry } from "@/api/admin/logs/logsRouter";
 
 export function generateOpenAPIDocument() {
   const registry = new OpenAPIRegistry([
     healthCheckRegistry,
     userRegistry,
-    todoRegistry,
+    logsRegistry,
     authRegistry,
-    adminTodoRegistry,
   ]);
 
   // Define the BearerAuth scheme in the registry
