@@ -11,9 +11,16 @@ import rateLimiter from "@/common/middleware/rateLimiter";
 import requestLogger from "@/common/middleware/requestLogger";
 import { env } from "@/common/utils/envConfig";
 import { authRouter } from "./api/auth/authRouter";
+import { messageRouter } from "./api/admin/messages/messagesRouter";
+import { roomsRouter } from "./api/admin/rooms/roomsRouter";
+import { storiesRouter } from "./api/admin/stories/storiesRouter";
+import { handleSocketConnections } from "./socket/socket.handler";
+import { Server as SocketIOServer } from "socket.io";
+import http from "http";
 
 const logger = pino({ name: "server start" });
 const app: Express = express();
+const server = http.createServer(app);
 
 // Set the application to trust the reverse proxy
 app.set("trust proxy", true);
@@ -31,9 +38,17 @@ app.use(requestLogger);
 // Routes
 app.use("/health-check", healthCheckRouter);
 app.use("/users", userRouter);
-// app.use("/admin/logs", logsRouter);
-// app.use("/admin/todos", adminTodoRouter);
 app.use("/auth", authRouter);
+app.use("/admin/messages", messageRouter);
+app.use("/admin/rooms", roomsRouter);
+app.use("/admin/stories", storiesRouter);
+
+const io = new SocketIOServer(server, {
+  cors: { origin: "*", methods: ["GET", "POST"] },
+});
+
+// Handle socket connections
+handleSocketConnections(io);
 
 // Swagger UI
 app.use(openAPIRouter);
