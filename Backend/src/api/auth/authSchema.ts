@@ -13,7 +13,9 @@ export const AuthSchema = z.object({
 });
 
 export const LoginSchema = z.object({
-  usernameOrEmail: z.string().min(3, "UsernameOrEmail must be at least 3 characters"),
+  usernameOrEmail: z
+    .string()
+    .min(3, "UsernameOrEmail must be at least 3 characters"),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")
@@ -25,14 +27,20 @@ export const LoginResponseSchema = z.object({
 });
 
 export const RefreshTokenSchema = z.object({
-  token: z.string(),
+  refreshToken: z.string(),
 });
 
 export const SendOtpSchema = z.object({
-  phoneNumber: z.string().min(10, "Phone number is required").max(12, "Phone number should be less than 12"),
+  phoneNumber: z
+    .string()
+    .min(10, "Phone number is required")
+    .max(12, "Phone number should be less than 12"),
 });
 
 export const VerifyOtpSchema = z.object({
-  phoneNumber: z.string().min(10, "Phone number is required").max(12, "Phone number is should be less than 12"),
+  phoneNumber: z
+    .string()
+    .min(10, "Phone number is required")
+    .max(12, "Phone number is should be less than 12"),
   otp: z.string().length(5, "OTP must be 5 digits"),
 });

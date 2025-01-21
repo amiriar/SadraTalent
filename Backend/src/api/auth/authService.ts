@@ -46,9 +46,9 @@ export class AuthService {
 
       // Generate access token and refresh token
       const accessTokenResponse = await this.generateToken(user);
-      const refreshTokenResponse = await this.generateRefreshToken(user); // Implement this method
+      const refreshTokenResponse = await this.generateRefreshToken(user);
 
-      if (!accessTokenResponse.success || !refreshTokenResponse.success) {
+      if (!accessTokenResponse.success || !refreshTokenResponse) {
         return ServiceResponse.failure(
           "Failed to generate tokens",
           null,
@@ -56,13 +56,13 @@ export class AuthService {
         );
       }
 
-      user.refreshToken = refreshTokenResponse.responseObject;
+      user.refreshToken = refreshTokenResponse;
       user.save();
 
       return ServiceResponse.success<IUser>("User authenticated", {
         // @ts-ignore
         accessToken: accessTokenResponse.responseObject,
-        refreshToken: refreshTokenResponse.responseObject,
+        refreshToken: refreshTokenResponse,
       });
     } catch (ex) {
       const errorMessage = `Error authenticating user: ${
@@ -89,6 +89,15 @@ export class AuthService {
     userData: Partial<IUser>
   ): Promise<ServiceResponse<IUser | null>> {
     try {
+      if (
+        await this.userRepository.findByUsernameAsync(userData.username ?? "")
+      ) {
+        return ServiceResponse.failure(
+          "User already registered, Please login.",
+          null,
+          StatusCodes.INTERNAL_SERVER_ERROR
+        );
+      }
       // Hash the password before saving
       if (userData.password) {
         userData.password = await bcrypt.hash(userData.password, 10);
@@ -113,7 +122,7 @@ export class AuthService {
     try {
       // Sign the JWT token with a secret (you can replace this with a private key if using RS256)
       const token = jwt.sign(
-        { _id: user._id }, // You can customize the payload
+        { _id: user._id, role: user.role }, // You can customize the payload
         env.JWT_SECRET || "your_secret_key", // Make sure to set this in your environment variables
         { expiresIn: "1h" } // Set the token expiration time as needed
       );
@@ -135,17 +144,22 @@ export class AuthService {
     }
   }
 
-  async refreshToken(
-    id: string,
-    token: string
-  ): Promise<ServiceResponse<string | null>> {
+  async refreshToken(token: string): Promise<ServiceResponse<string | null>> {
     try {
-      const user = await this.userRepository.findByIdAsync(id);
+      const user = await this.userRepository.findByRefreshTokenAsync(token);
       if (!user) {
         return ServiceResponse.failure(
           "User not found",
           null,
           StatusCodes.NOT_FOUND
+        );
+      }
+
+      if (user.refreshTokenExpires && user.refreshTokenExpires < new Date()) {
+        return ServiceResponse.failure(
+          "RefreshToken Expired",
+          null,
+          StatusCodes.UNAUTHORIZED
         );
       }
 
@@ -177,6 +191,7 @@ export class AuthService {
   }
 
   // Logs out a user
+
   async logout(id: string): Promise<ServiceResponse<boolean>> {
     try {
       const user = await this.userRepository.findByIdAsync(id);
@@ -224,22 +239,17 @@ export class AuthService {
   //   }
   // }
 
-  // New method to generate refresh token
-  async generateRefreshToken(
-    user: IUser
-  ): Promise<ServiceResponse<string | null>> {
-    // Implement your logic to generate a refresh token
-    // This could be similar to generateToken but with different payload or expiration
-    const refreshToken = jwt.sign(
-      { _id: user._id }, // Customize the payload as needed
-      env.JWT_REFRESH_SECRET || "your_refresh_secret_key", // Use a different secret for refresh tokens
-      { expiresIn: "7d" } // Set a longer expiration time for refresh tokens
-    );
+  async generateRefreshToken(user: IUser): Promise<string> {
+    const buffer = Buffer.alloc(64);
+    for (let i = 0; i < 64; i++) {
+      buffer[i] = Math.floor(Math.random() * 256);
+    }
+    const refreshToken = buffer.toString("base64");
 
-    return ServiceResponse.success<string>(
-      "Refresh token generated successfully",
-      refreshToken
-    );
+    user.refreshToken = refreshToken;
+    user.refreshTokenExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    return refreshToken ?? "";
   }
 
   async validateToken(token: string): Promise<any | boolean> {
@@ -330,9 +340,9 @@ export class AuthService {
     }
 
     const accessTokenResponse = await this.generateToken(user);
-    const refreshTokenResponse = await this.generateRefreshToken(user); // Implement this method
+    const refreshTokenResponse = await this.generateRefreshToken(user);
 
-    if (!accessTokenResponse.success || !refreshTokenResponse.success) {
+    if (!accessTokenResponse.success || !refreshTokenResponse) {
       return ServiceResponse.failure(
         "Failed to generate tokens",
         null,
@@ -340,13 +350,13 @@ export class AuthService {
       );
     }
 
-    user.refreshToken = refreshTokenResponse.responseObject;
+    user.refreshToken = refreshTokenResponse;
     user.save();
 
     return ServiceResponse.success<IUser>("User authenticated", {
       // @ts-ignore
       accessToken: accessTokenResponse.responseObject,
-      refreshToken: refreshTokenResponse.responseObject,
+      refreshToken: refreshTokenResponse,
     });
   }
 }
