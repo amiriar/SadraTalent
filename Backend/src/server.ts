@@ -13,12 +13,13 @@ import { env } from "@/common/utils/envConfig";
 import { authRouter } from "./api/auth/authRouter";
 import { messageRouter } from "./api/admin/messages/messagesRouter";
 import { roomsRouter } from "./api/admin/rooms/roomsRouter";
-import { storiesRouter } from "./api/admin/stories/storiesRouter";
+import { adminStoriesRouter } from "./api/admin/stories/storiesRouter";
 import { handleSocketConnections } from "./socket/socket.handler";
 import { Server as SocketIOServer } from "socket.io";
 import http from "http";
 import { uploadsRouter } from "./api/uploads/uploadsRouter";
 import { filesRouter } from "./api/admin/files/filesRouter";
+import { storiesRouter } from "./api/stories/storiesRouter";
 
 const logger = pino({ name: "server start" });
 const app: Express = express();
@@ -42,9 +43,10 @@ app.use("/health-check", healthCheckRouter);
 app.use("/users", userRouter);
 app.use("/auth", authRouter);
 app.use("/upload", uploadsRouter);
+app.use("/stories", storiesRouter);
 app.use("/admin/messages", messageRouter);
 app.use("/admin/rooms", roomsRouter);
-app.use("/admin/stories", storiesRouter);
+app.use("/admin/stories", adminStoriesRouter);
 app.use("/admin/files", filesRouter);
 
 const io = new SocketIOServer(server, {
