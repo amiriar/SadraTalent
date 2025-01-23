@@ -6,9 +6,28 @@ export class FilesRepository {
     return await UploadModel.find({}).skip(skip).limit(parseInt(limit));
   }
 
-  async getFileById(roomId: string): Promise<IUpload | null> {
+  async getFileById(fileId: string): Promise<IUpload | null> {
     return await UploadModel.findOne({
-      _id: roomId,
+      _id: fileId,
     });
+  }
+
+  async updateFileById(fileId: string, newData: any): Promise<IUpload | null> {
+    return await UploadModel.findOneAndUpdate(
+      {
+        _id: fileId,
+      },
+      newData,
+      { new: true }
+    );
+  }
+
+  async deleteFileById(fileId: string): Promise<IUpload | null> {
+    return await UploadModel.findByIdAndUpdate(
+      {
+        _id: fileId,
+      },
+      { isDeleted: true }
+    );
   }
 }
