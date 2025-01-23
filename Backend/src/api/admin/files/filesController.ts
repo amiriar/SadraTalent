@@ -11,13 +11,37 @@ class FilesController {
 
   public getAllFiles: RequestHandler = async (req: Request, res: Response) => {
     const { page = "1", limit = "10" } = req.query;
-    const serviceResponse = await this.#filesService.getAllFiles(page as string, limit as string);
+    const serviceResponse = await this.#filesService.getAllFiles(
+      page as string,
+      limit as string
+    );
     return handleServiceResponse(serviceResponse, res);
   };
 
   public getFileById: RequestHandler = async (req: Request, res: Response) => {
-    const { roomId } = req.params;
-    const serviceResponse = await this.#filesService.getFileById(roomId);
+    const { fileId } = req.params;
+    const serviceResponse = await this.#filesService.getFileById(fileId);
+    return handleServiceResponse(serviceResponse, res);
+  };
+
+  public updateFileById: RequestHandler = async (
+    req: Request,
+    res: Response
+  ) => {
+    const { fileId } = req.params;
+    const serviceResponse = await this.#filesService.updateFileById(
+      fileId,
+      req.body
+    );
+    return handleServiceResponse(serviceResponse, res);
+  };
+
+  public deleteFileById: RequestHandler = async (
+    req: Request,
+    res: Response
+  ) => {
+    const { fileId } = req.params;
+    const serviceResponse = await this.#filesService.deleteFileById(fileId);
     return handleServiceResponse(serviceResponse, res);
   };
 }
