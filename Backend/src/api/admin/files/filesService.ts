@@ -41,9 +41,9 @@ export class FilesService {
     }
   }
 
-  async getFileById(roomId: string): Promise<ServiceResponse<IUpload | null>> {
+  async getFileById(fileId: string): Promise<ServiceResponse<IUpload | null>> {
     try {
-      const files = await this.#fileRespository.getFileById(roomId);
+      const files = await this.#fileRespository.getFileById(fileId);
 
       if (!files) {
         return ServiceResponse.failure(
@@ -63,6 +63,59 @@ export class FilesService {
       return ServiceResponse.failure(
         "An error occurred while retrieving files",
         null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async updateFileById(
+    fileId: string,
+    newData: any
+  ): Promise<ServiceResponse<IUpload | null>> {
+    try {
+      const files = await this.#fileRespository.updateFileById(fileId, newData);
+
+      if (!files) {
+        return ServiceResponse.failure(
+          "No files found",
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      return ServiceResponse.success("Files retrieved successfully", files);
+    } catch (ex) {
+      const errorMessage = `Error retrieving files: ${(ex as Error).message}`;
+      logger.error(errorMessage);
+      return ServiceResponse.failure(
+        "An error occurred while retrieving files",
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async deleteFileById(
+    fileId: string
+  ): Promise<ServiceResponse<boolean>> {
+    try {
+      const files = await this.#fileRespository.deleteFileById(fileId);
+
+      if (!files) {
+        return ServiceResponse.failure(
+          "No files found",
+          false,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      return ServiceResponse.success("Files retrieved successfully", true);
+    } catch (ex) {
+      const errorMessage = `Error retrieving files: ${(ex as Error).message}`;
+      logger.error(errorMessage);
+      return ServiceResponse.failure(
+        "An error occurred while retrieving files",
+        false,
         StatusCodes.INTERNAL_SERVER_ERROR
       );
     }
