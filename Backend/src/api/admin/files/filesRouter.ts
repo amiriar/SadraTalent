@@ -57,8 +57,51 @@ filesRegistery.registerPath({
   responses: createApiResponse(UploadSchema, "Successfully retrieved room"),
 });
 filesRouter.get(
-  "/:roomId",
+  "/:fileId",
   AuthGuard,
   rolesGuard(Roles.SuperAdmin),
   filesController.getFileById
+);
+
+filesRegistery.registerPath({
+  method: "patch",
+  path: "/admin/files/{fileId}",
+  tags: ["Files - Admin Panel"],
+  request: {
+    params: z.object({
+      fileId: z.string(),
+    }),
+    body: {
+      content: {
+        "application/json": {
+          schema: UploadSchema,
+        },
+      },
+    },
+  },
+  responses: createApiResponse(UploadSchema, "Successfully retrieved room"),
+});
+filesRouter.patch(
+  "/:fileId",
+  AuthGuard,
+  rolesGuard(Roles.SuperAdmin),
+  filesController.updateFileById
+);
+
+filesRegistery.registerPath({
+  method: "delete",
+  path: "/admin/files/{fileId}",
+  tags: ["Files - Admin Panel"],
+  request: {
+    params: z.object({
+      fileId: z.string(),
+    }),
+  },
+  responses: createApiResponse(UploadSchema, "Successfully retrieved room"),
+});
+filesRouter.delete(
+  "/:fileId",
+  AuthGuard,
+  rolesGuard(Roles.SuperAdmin),
+  filesController.deleteFileById
 );
