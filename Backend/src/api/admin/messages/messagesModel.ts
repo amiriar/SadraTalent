@@ -17,7 +17,6 @@ export const MessageSchema = z.object({
   receiver: UserInfoSchema,
   content: z.string().optional(),
   room: z.string(),
-  timestamp: z.date().default(() => new Date()),
   date: z.string().optional(),
   status: z.enum(["sent", "delivered", "seen"]).default("sent"),
   voiceUrl: z.string().optional(),
@@ -31,6 +30,8 @@ export const MessageSchema = z.object({
   forwardedFrom: z.string().optional(),
   deletedBy: z.array(z.string()).default([]),
   storyId: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
 });
 
 export type Message = z.infer<typeof MessageSchema>;
