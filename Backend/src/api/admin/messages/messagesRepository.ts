@@ -10,8 +10,25 @@ export class MessageRepository {
     const limitNumber = parseInt(limit, 10);
     const skip = (pageNumber - 1) * limitNumber;
     return await MessageModel.find({
-      sender: senderId,
-      receiver: receiverId,
+      $or: [
+        { sender: senderId, receiver: receiverId },
+        { sender: receiverId, receiver: senderId },
+      ],
+    })
+      .skip(skip)
+      .limit(limitNumber);
+  }
+
+  async getMessagesFromRoom(
+    messageId: string,
+    page: string,
+    limit: string
+  ): Promise<IMessage[] | null> {
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * limitNumber;
+    return await MessageModel.find({
+      room: messageId,
     })
       .skip(skip)
       .limit(limitNumber);
@@ -24,8 +41,15 @@ export class MessageRepository {
     const pageNumber = parseInt(page, 10);
     const limitNumber = parseInt(limit, 10);
     const skip = (pageNumber - 1) * limitNumber;
-    return await MessageModel.find()
-      .skip(skip)
-      .limit(limitNumber);
+    return await MessageModel.find().skip(skip).limit(limitNumber);
+  }
+
+  async deleteMessageById(messageId: string) {
+    return await MessageModel.findOneAndUpdate(
+      {
+        _id: messageId,
+      },
+      { isDeleted: true }
+    );
   }
 }
