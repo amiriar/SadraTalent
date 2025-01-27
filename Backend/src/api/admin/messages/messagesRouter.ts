@@ -21,16 +21,12 @@ messageRegistery.registerPath({
   tags: ["Messages - Admin Panel"],
   request: {
     params: z.object({
-      senderId: z.string(),
-      receiverId: z.string(),
+      MongoSenderId: z.string(),
+      MongoReceiverId: z.string(),
     }),
     query: z.object({
-      page: z.number().int().positive().describe("Page number"),
-      limit: z
-        .number()
-        .int()
-        .positive()
-        .describe("Number of messages per page"),
+      page: z.string().describe("Page number"),
+      limit: z.string().describe("Number of messages per page"),
     }),
   },
   responses: createApiResponse(
@@ -39,18 +35,54 @@ messageRegistery.registerPath({
   ),
 });
 messageRouter.get(
-  "/:senderId/:receiverId",
+  "/:MongoSenderId/:MongoReceiverId",
   AuthGuard,
   rolesGuard(Roles.SuperAdmin),
   validateRequest(
     z.object({
       params: z.object({
-        senderId: z.string(),
-        receiverId: z.string(),
+        MongoSenderId: z.string(),
+        MongoReceiverId: z.string(),
       }),
       query: z.object({
-        page: z.number().int().positive(),
-        limit: z.number().int().positive(),
+        page: z.string(),
+        limit: z.string(),
+      }),
+    })
+  ),
+  messageController.getMessagesBetweenUsersByMongoId
+);
+
+messageRegistery.registerPath({
+  method: "get",
+  path: "/admin/messages/{messageId}",
+  tags: ["Messages - Admin Panel"],
+  request: {
+    params: z.object({
+      messageId: z.string(),
+    }),
+    query: z.object({
+      page: z.string().describe("Page number"),
+      limit: z.string().describe("Number of messages per page"),
+    }),
+  },
+  responses: createApiResponse(
+    z.array(MessageSchema),
+    "Successfully retrieved messages"
+  ),
+});
+messageRouter.get(
+  "/:messageId",
+  AuthGuard,
+  rolesGuard(Roles.SuperAdmin),
+  validateRequest(
+    z.object({
+      params: z.object({
+        messageId: z.string(),
+      }),
+      query: z.object({
+        page: z.string(),
+        limit: z.string(),
       }),
     })
   ),
@@ -87,4 +119,32 @@ messageRouter.get(
     })
   ),
   messageController.searchMessages
+);
+
+messageRegistery.registerPath({
+  method: "delete",
+  path: "/admin/messages/{messageId}",
+  tags: ["Messages - Admin Panel"],
+  request: {
+    params: z.object({
+      messageId: z.string(),
+    }),
+  },
+  responses: createApiResponse(
+    z.string().transform(Boolean),
+    "Successfully retrieved messages"
+  ),
+});
+messageRouter.delete(
+  "/:messageId",
+  AuthGuard,
+  rolesGuard(Roles.SuperAdmin),
+  validateRequest(
+    z.object({
+      params: z.object({
+        messageId: z.string(),
+      }),
+    })
+  ),
+  messageController.deleteMessageById
 );
