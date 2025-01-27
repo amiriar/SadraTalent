@@ -6,11 +6,11 @@ import type { AuthSchema } from "./authSchema";
 extendZodWithOpenApi(z);
 
 export type Auth = z.infer<typeof AuthSchema>;
-export const TodoSchema = z.object({
-  username: z.string(),
-  email: z.string(),
-  password: z.string(),
-});
+// export const TodoSchema = z.object({
+//   username: z.string(),
+//   email: z.string(),
+//   password: z.string(),
+// });
 
 // Input Validation for 'POST /auth' endpoint
 export const AuthRegisterSchema = z.object({
