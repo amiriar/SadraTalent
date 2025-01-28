@@ -28,6 +28,8 @@ export interface IMessage extends Document {
   forwardedFrom?: ObjectId | string;
   deletedBy?: ObjectId | string;
   storyId?: ObjectId | string;
+  createdAt: Date;
+  updateAt: Date;
 }
 
 const MessageSchema = new Schema<IMessage>(
@@ -39,7 +41,7 @@ const MessageSchema = new Schema<IMessage>(
     // date: { type: String, required: false },
     status: {
       type: String,
-      enum: ["sent", "delivered", "seen"],
+      enum: ["sent", "delivered", "seen", "detail"],
       default: "sent",
     },
     voiceUrl: { type: String, required: false },
