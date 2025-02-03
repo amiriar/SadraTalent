@@ -41,6 +41,63 @@ export class RoomsService {
     }
   }
 
+  async updateRoomById(
+    roomId: string,
+    newData: any
+  ): Promise<ServiceResponse<IRoom | null>> {
+    try {
+      const rooms = await this.#roomsRepository.updateRoomById(roomId, newData);
+
+      if (!rooms) {
+        return ServiceResponse.failure(
+          "No rooms found",
+          null,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      return ServiceResponse.success<IRoom>(
+        "Rooms retrieved successfully",
+        rooms
+      );
+    } catch (ex) {
+      const errorMessage = `Error retrieving rooms: ${(ex as Error).message}`;
+      logger.error(errorMessage);
+      return ServiceResponse.failure(
+        "An error occurred while retrieving rooms",
+        null,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
+  async deleteRoomById(roomId: string): Promise<ServiceResponse<boolean>> {
+    try {
+      const rooms = await this.#roomsRepository.deleteRoomById(roomId);
+
+      if (!rooms) {
+        return ServiceResponse.failure(
+          "No rooms found",
+          false,
+          StatusCodes.NOT_FOUND
+        );
+      }
+
+      return ServiceResponse.success<boolean>(
+        "Rooms retrieved successfully",
+        true
+      );
+    } catch (ex) {
+      const errorMessage = `Error retrieving rooms: ${(ex as Error).message}`;
+      logger.error(errorMessage);
+      return ServiceResponse.failure(
+        "An error occurred while retrieving rooms",
+        false,
+        StatusCodes.INTERNAL_SERVER_ERROR
+      );
+    }
+  }
+
   async getRoomById(roomId: string): Promise<ServiceResponse<IRoom | null>> {
     try {
       const rooms = await this.#roomsRepository.getRoomById(roomId);
