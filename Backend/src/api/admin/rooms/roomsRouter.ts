@@ -62,3 +62,56 @@ roomsRouter.get(
   rolesGuard(Roles.SuperAdmin),
   roomsController.getRoomById
 );
+
+roomsRegistery.registerPath({
+  method: "patch",
+  path: "/admin/rooms/{roomId}",
+  tags: ["Rooms - Admin Panel"],
+  request: {
+    params: z.object({
+      roomId: z.string(),
+    }),
+    body: {
+      content: {
+        "application/json": {
+          schema: RoomSchema,
+        },
+      },
+    },
+  },
+  responses: createApiResponse(RoomSchema, "Successfully updated room"),
+});
+
+roomsRouter.patch(
+  "/:roomId",
+  AuthGuard,
+  rolesGuard(Roles.SuperAdmin),
+  validateRequest(
+    z.object({
+      params: z.object({
+        roomId: z.string(),
+      }),
+      body: RoomSchema,
+    })
+  ),
+  roomsController.updateRoomById
+);
+
+roomsRegistery.registerPath({
+  method: "delete",
+  path: "/admin/rooms/{roomId}",
+  tags: ["Rooms - Admin Panel"],
+  request: {
+    params: z.object({
+      roomId: z.string(),
+    }),
+  },
+  responses: createApiResponse(z.boolean(), "Successfully deleted room"),
+});
+
+roomsRouter.delete(
+  "/:roomId",
+  AuthGuard,
+  rolesGuard(Roles.SuperAdmin),
+  roomsController.deleteRoomById
+);
