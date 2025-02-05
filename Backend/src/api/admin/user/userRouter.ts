@@ -7,6 +7,7 @@ import { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { userController } from "./userController";
+import { Roles } from "@/enum/Roles";
 
 export const userRegistry = new OpenAPIRegistry();
 export const userRouter: Router = express.Router();
@@ -21,7 +22,7 @@ userRegistry.registerPath({
   tags: ["User - Admin Panel"],
   responses: createApiResponse(z.array(UserSchema), "Successfully retrieved users"),
 });
-userRouter.get("/", AuthGuard, rolesGuard("ADMIN"), userController.getUsers);
+userRouter.get("/", AuthGuard, rolesGuard(Roles.SuperAdmin), userController.getUsers);
 
 // Get user by ID
 userRegistry.registerPath({
@@ -31,7 +32,7 @@ userRegistry.registerPath({
   request: { params: GetUserSchema.shape.params },
   responses: createApiResponse(UserSchema, "Successfully retrieved user"),
 });
-userRouter.get("/:id", validateRequest(GetUserSchema), AuthGuard, rolesGuard("ADMIN"), userController.getUser);
+userRouter.get("/:id", validateRequest(GetUserSchema), AuthGuard, rolesGuard(Roles.SuperAdmin), userController.getUser);
 
 // Create user
 // userRegistry.registerPath({
@@ -68,7 +69,7 @@ userRegistry.registerPath({
   },
   responses: createApiResponse(UserSchema, "Successfully updated user"),
 });
-userRouter.put("/:id", AuthGuard, rolesGuard("ADMIN"), userController.updateUser);
+userRouter.put("/:id", AuthGuard, rolesGuard(Roles.SuperAdmin), userController.updateUser);
 
 // Delete user
 userRegistry.registerPath({
@@ -78,4 +79,4 @@ userRegistry.registerPath({
   request: { params: GetUserSchema.shape.params },
   responses: createApiResponse(z.object({ success: z.boolean() }), "Successfully deleted user"),
 });
-userRouter.delete("/:id", AuthGuard, rolesGuard("ADMIN"), userController.deleteUser);
+userRouter.delete("/:id", AuthGuard, rolesGuard(Roles.SuperAdmin), userController.deleteUser);
