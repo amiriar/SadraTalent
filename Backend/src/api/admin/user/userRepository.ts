@@ -14,6 +14,12 @@ export class UserRepository {
     );
   }
 
+  async findByRefreshTokenAsync(token: string): Promise<IUser | null> {
+    return await UserModel.findOne({ refreshToken: token }).select(
+      "-firstname -lastname -profile -bio -status -lastSeen -stories -customStatus -__v"
+    );
+  }
+
   async findByUsernameAsync(username: string): Promise<IUser | null> {
     return await UserModel.findOne({ username }).select(
       "-firstname -lastname -profile -bio -status -lastSeen -stories -customStatus -__v"
