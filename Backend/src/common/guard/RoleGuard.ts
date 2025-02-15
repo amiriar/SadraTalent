@@ -3,8 +3,7 @@ import { StatusCodes } from "http-status-codes";
 
 export function rolesGuard(requiredRole: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    // Ensure user is authenticated and has roles
-    const user = req.user; // Assuming `req.user` is populated by auth guard
+    const user = req.user;
 
     if (!user || !user?.role /*|| !Array.isArray(user?.role)*/) {
       return res.status(StatusCodes.FORBIDDEN).json({
@@ -12,7 +11,6 @@ export function rolesGuard(requiredRole: string) {
       });
     }
 
-    // Check if user has the required role
     if (!user.role.includes(requiredRole)) {
       return res
         .status(StatusCodes.FORBIDDEN)
