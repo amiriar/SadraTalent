@@ -20,6 +20,7 @@ import http from "http";
 import { uploadsRouter } from "./api/uploads/uploadsRouter";
 import { filesRouter } from "./api/admin/files/filesRouter";
 import { storiesRouter } from "./api/stories/storiesRouter";
+import { dashboardRouter } from "./api/Dashboard/DashboardRouter";
 
 const logger = pino({ name: "server start" });
 const app: Express = express();
@@ -31,7 +32,7 @@ app.set("trust proxy", true);
 // Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+app.use(cors({ origin: /*env.CORS_ORIGIN*/ "http://localhost:5173", credentials: true }));
 app.use(helmet());
 app.use(rateLimiter);
 
@@ -42,6 +43,7 @@ app.use(requestLogger);
 app.use("/health-check", healthCheckRouter);
 app.use("/users", userRouter);
 app.use("/auth", authRouter);
+app.use("/dashboard", dashboardRouter);
 app.use("/upload", uploadsRouter);
 app.use("/stories", storiesRouter);
 app.use("/admin/messages", messageRouter);
