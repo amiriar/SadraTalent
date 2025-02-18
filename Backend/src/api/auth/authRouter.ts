@@ -1,12 +1,26 @@
 import { createApiResponse } from "@/api-docs/openAPIResponseBuilders";
 import { AuthGuard } from "@/common/guard/AuthGuard";
-import { handleServiceResponse, validateRequest } from "@/common/utils/httpHandlers";
+import {
+  handleServiceResponse,
+  validateRequest,
+} from "@/common/utils/httpHandlers";
 import { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
 import express, { type Router } from "express";
 import { z } from "zod";
 import { authController } from "./authController";
-import { AuthLoginSchema, AuthRegisterSchema, RefreshTokenBodySchema } from "./authModel";
-import { AuthSchema, LoginResponseSchema, LoginSchema, RefreshTokenSchema, SendOtpSchema, VerifyOtpSchema } from "./authSchema";
+import {
+  AuthLoginSchema,
+  AuthRegisterSchema,
+  RefreshTokenBodySchema,
+} from "./authModel";
+import {
+  AuthSchema,
+  LoginResponseSchema,
+  LoginSchema,
+  RefreshTokenSchema,
+  SendOtpSchema,
+  VerifyOtpSchema,
+} from "./authSchema";
 import { authService } from "./authService";
 
 export const authRegistry = new OpenAPIRegistry();
@@ -31,7 +45,11 @@ authRegistry.registerPath({
   },
   responses: createApiResponse(AuthSchema, "Successfully registered user"),
 });
-authRouter.post("/register", validateRequest(AuthRegisterSchema), authController.register);
+authRouter.post(
+  "/register",
+  validateRequest(AuthRegisterSchema),
+  authController.register
+);
 
 // Login user
 authRegistry.registerPath({
@@ -49,7 +67,11 @@ authRegistry.registerPath({
   },
   responses: createApiResponse(LoginResponseSchema, "Successfully logged in"),
 });
-authRouter.post("/login", validateRequest(AuthLoginSchema), authController.login);
+authRouter.post(
+  "/login",
+  validateRequest(AuthLoginSchema),
+  authController.login
+);
 
 // // Forget password
 // authRegistry.registerPath({
@@ -86,7 +108,11 @@ authRegistry.registerPath({
   },
   responses: createApiResponse(RefreshTokenSchema, "Token refreshed"),
 });
-authRouter.post("/refresh-token", validateRequest(RefreshTokenBodySchema), authController.refreshToken);
+authRouter.post(
+  "/refresh-token",
+  validateRequest(RefreshTokenBodySchema),
+  authController.refreshToken
+);
 
 // Logout user
 authRegistry.registerPath({
@@ -120,15 +146,25 @@ authRegistry.registerPath({
   },
   responses: createApiResponse(SendOtpSchema, "OTP sent successfully"),
 });
-authRouter.post("/send-otp", validateRequest(SendOtpSchema), async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-    const serviceResponse = await authService.sendOtp(phoneNumber);
-    return handleServiceResponse(serviceResponse, res);
-  } catch (error) {
-    return res.status(500).json({ error: "An unexpected error occurred" });
+authRouter.post(
+  "/send-otp",
+  validateRequest(
+    z.object({
+      body: z.object({
+        phone: z.string(),
+      }),
+    })
+  ),
+  async (req, res) => {
+    try {
+      const { phone } = req.body;
+      const serviceResponse = await authService.sendOtp(phone);
+      return handleServiceResponse(serviceResponse, res);
+    } catch (error) {
+      return res.status(500).json({ error: "An unexpected error occurred" });
+    }
   }
-});
+);
 
 // Verify OTP
 authRegistry.registerPath({
@@ -139,15 +175,30 @@ authRegistry.registerPath({
     body: {
       content: {
         "application/json": {
-          schema: VerifyOtpSchema,
+          schema: z.object({
+            phone: z.string(),
+            code: z.string(),
+          }),
         },
       },
     },
   },
-  responses: createApiResponse(LoginResponseSchema, "OTP verified successfully"),
+  responses: createApiResponse(
+    LoginResponseSchema,
+    "OTP verified successfully"
+  ),
 });
-authRouter.post("/verify-otp", validateRequest(VerifyOtpSchema), async (req, res) => {
-  const { phoneNumber, otp } = req.body;
-  const serviceResponse = await authService.loginWithOtp(phoneNumber, otp);
-  return handleServiceResponse(serviceResponse, res);
-});
+authRouter.post(
+  "/verify-otp",
+  // validateRequest(
+  //   z.object({
+  //     phone: z.string(),
+  //     code: z.string(),
+  //   })
+  // ),
+  async (req, res) => {
+    const { phone, code } = req.body;
+    const serviceResponse = await authService.loginWithOtp(phone, code);
+    return handleServiceResponse(serviceResponse, res);
+  }
+);
