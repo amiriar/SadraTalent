@@ -26,7 +26,7 @@ export class UserRepository {
     );
   }
 
-  async findByPhoneNumberAsync(phoneNumber: string): Promise<IUser | null> {
+  async findByPhoneAsync(phoneNumber: string): Promise<IUser | null> {
     return await UserModel.findOne({ phoneNumber }).select(
       "-firstname -lastname -profile -bio -status -lastSeen -stories -customStatus -__v"
     );
