@@ -262,22 +262,27 @@ export class AuthService {
     }
   }
 
-  // New method to send OTP
-  async sendOtp(phoneNumber: string): Promise<ServiceResponse<boolean>> {
+  async sendOtp(phone: string): Promise<ServiceResponse<boolean>> {
     const otp = Math.floor(10000 + Math.random() * 90000).toString(); // Generate a 6-digit OTP
-    const expirationTime = new Date(Date.now() + 10 * 60 * 1000); // Set expiration time to 10 minutes
+    const expirationTime = new Date(Date.now() + 10 * 60 * 1000); //  10 minutes
 
-    // Check if user exists, if not create a new user
-    let user = await this.userRepository.findByPhoneNumberAsync(phoneNumber);
+    let user = await this.userRepository.findByPhoneAsync(phone);
     if (!user) {
-      user = await UserModel.create({ phoneNumber }); // Assuming User is the model for users
-      await user.save(); // Save the new user
+      user = await UserModel.create({ phone });
+      await user.save();
     }
 
-    // Save OTP and expiration time to the user record
-    user.otp = otp; // Save OTP
-    user.otpExpire = expirationTime; // Save expiration time
-    await user.save(); // Save user record
+    if (user.otpExpire && new Date() < user.otpExpire) {
+      return ServiceResponse.failure(
+        "OTP has not expired yet",
+        false,
+        StatusCodes.UNAUTHORIZED
+      );
+    }
+
+    user.otp = otp;
+    user.otpExpire = expirationTime;
+    await user.save();
 
     // Send OTP via email (implement this function)
     // await sendOtpEmail(email, otp);
@@ -290,7 +295,7 @@ export class AuthService {
     phoneNumber: string,
     otp: string
   ): Promise<ServiceResponse<boolean>> {
-    const user = await this.userRepository.findByPhoneNumberAsync(phoneNumber);
+    const user = await this.userRepository.findByPhoneAsync(phoneNumber);
     if (!user || user.otp !== otp) {
       return ServiceResponse.failure(
         "Invalid OTP",
@@ -318,19 +323,19 @@ export class AuthService {
 
   // Modified login method to support OTP
   async loginWithOtp(
-    phoneNumber: string,
-    otp: string
+    phone: string,
+    code: string
   ): Promise<ServiceResponse<IUser | null>> {
-    const otpVerification = await this.verifyOtp(phoneNumber, otp);
+    const otpVerification = await this.verifyOtp(phone, code);
     if (!otpVerification.success) {
       return ServiceResponse.failure(
-        "Invalid OTP",
+        otpVerification.message,
         null,
         StatusCodes.UNAUTHORIZED
       );
     }
 
-    const user = await this.userRepository.findByPhoneNumberAsync(phoneNumber);
+    const user = await this.userRepository.findByPhoneAsync(phone);
     if (!user) {
       return ServiceResponse.failure(
         "User Not Found",
