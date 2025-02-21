@@ -31,14 +31,14 @@ export const RefreshTokenSchema = z.object({
 });
 
 export const SendOtpSchema = z.object({
-  phoneNumber: z
+  phone: z
     .string()
     .min(10, "Phone number is required")
     .max(12, "Phone number should be less than 12"),
 });
 
 export const VerifyOtpSchema = z.object({
-  phoneNumber: z
+  phone: z
     .string()
     .min(10, "Phone number is required")
     .max(12, "Phone number is should be less than 12"),
