@@ -91,7 +91,7 @@ const RoomModal: React.FC<RoomModalProps> = ({
           gutterBottom
           sx={{ textAlign: "center" }}
         >
-          {room?.roomName || "No Room Name"}
+          {room?.name || "No Room Name"}
         </Typography>
 
         <Typography
