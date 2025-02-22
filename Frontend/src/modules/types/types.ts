@@ -46,7 +46,7 @@ export interface Recipient {
 
 export interface Room {
   _id: string;
-  roomName: string;
+  name: string;
   bio: string;
   // participants: mongoose.Types.ObjectId[];
   participants: Array<{
