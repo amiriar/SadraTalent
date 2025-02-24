@@ -29,7 +29,7 @@ const ChatInput = ({
 
   useEffect(() => {
     if (typeof room === "object") {
-      if (room.roomName === "General") {
+      if (room.name === "General") {
         setInputDisabled(false);
       } else {
         const currentParticipant = room.participants.find(
@@ -66,43 +66,45 @@ const ChatInput = ({
         username: sender?.username,
         profile: sender?.profile,
       };
-      const recipientData = recipient ? {
-        _id: recipient._id,
-        username: recipient.username,
-        profile: recipient.profile,
-      } : null;
+      const recipientData = {
+        _id: recipient?._id,
+        username: recipient?.username,
+        profile: recipient?.profile,
+      };
 
       const formData = new FormData();
       formData.append("sender", JSON.stringify(senderData));
-      if (recipientData) {
-        formData.append("recipient", JSON.stringify(recipientData));
-      }
+      recipient && formData.append("recipient", JSON.stringify(recipientData));
       formData.append("room", room);
       formData.append("file", file);
 
-      setUploadFileProgress(0);
+      let fileUrl = "";
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/api/messages/upload-file`,
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/messages/upload-file`,
         formData,
         {
           headers: {
             "Content-Type": "multipart/form-data",
           },
           withCredentials: true,
-          onUploadProgress: (progressEvent: { loaded: number; total: number }) => {
+          onUploadProgress: function (progressEvent: any) {
+            setUploadFileProgress(0);
             const percentCompleted = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total
             );
             setUploadFileProgress(percentCompleted);
           },
         }
-      );
+      ).then((res) => {
+        setUploadFileProgress(0);
+        fileUrl = res.data.fileUrl;
+      }).catch(() => {
+        setUploadFileProgress("در فرایند بارگزاری مشکلی پیش آمد !");
+      });
 
-      const fileUrl = response.data.fileUrl;
-      
       socket?.emit("fileUpload", {
-        fileUrl,
+        fileUrl: fileUrl,
         sender: senderData,
         room,
         ...(recipientData && { recipient: recipientData }),
@@ -139,6 +141,7 @@ const ChatInput = ({
       }
 
       if (recipient) {
+        // @ts-ignore
         messageData.recipient = {
           _id: recipient._id,
         };

@@ -17,7 +17,11 @@ interface EditRoomModalProps {
   open: boolean;
   onClose: () => void;
   room: Room;
-  onSave: (updatedRoom: { roomName: string; bio: string; isGroup: boolean }) => void;
+  onSave: (updatedRoom: {
+    name: string;
+    bio: string;
+    isGroup: boolean;
+  }) => void;
 }
 
 const EditRoomModal: React.FC<EditRoomModalProps> = ({
@@ -26,18 +30,18 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
   room,
   onSave,
 }) => {
-  const [roomName, setRoomName] = useState<string>(room?.roomName || "");
+  const [name, setRoomName] = useState<string>(room?.name || "");
   const [bio, setBio] = useState<string>(room?.bio || "");
   const [isGroup, setIsGroup] = useState<boolean>(room?.isGroup || true); // Default to group
 
   const handleSave = () => {
-    onSave({ roomName, bio, isGroup });
+    onSave({ name, bio, isGroup });
     onClose();
   };
 
   useEffect(() => {
     if (room) {
-      setRoomName(room.roomName || "");
+      setRoomName(room.name || "");
       setBio(room.bio || "");
       setIsGroup(room.isGroup); // Default to group if not set
     }
@@ -72,7 +76,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
 
         <TextField
           label="Room Name"
-          value={roomName}
+          value={name}
           onChange={(e) => setRoomName(e.target.value)}
           fullWidth
           margin="normal"
@@ -96,11 +100,7 @@ const EditRoomModal: React.FC<EditRoomModalProps> = ({
           onChange={(e) => setIsGroup(e.target.value === "group")}
           row
         >
-          <FormControlLabel
-            value="group"
-            control={<Radio />}
-            label="Group"
-          />
+          <FormControlLabel value="group" control={<Radio />} label="Group" />
           <FormControlLabel
             value="channel"
             control={<Radio />}

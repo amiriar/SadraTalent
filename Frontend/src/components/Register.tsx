@@ -22,9 +22,11 @@ const Register: React.FC = () => {
     setIsLoading(true);
     try {
       await axios
-        .post(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/auth/send-otp`, { phone })
+        .post(`${import.meta.env.VITE_BACKEND_BASE_URL}/auth/send-otp`, {
+          phone,
+        })
         .then((res) => {
-          setMessage(`OTP has been sent to your phone. Code: ${res.data.otp}`);
+          setMessage(res.data.message);
           setError(false);
         });
     } catch (error) {
@@ -36,7 +38,7 @@ const Register: React.FC = () => {
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/dashboard/whoami`, {
+      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/dashboard/whoami`, {
         withCredentials: true,
       })
       .then(() => {
@@ -48,7 +50,9 @@ const Register: React.FC = () => {
     <div className="register-container">
       <div className="register-form">
         <h2 style={{ fontFamily: "Poppins" }}>Register</h2>
-        <p style={{ fontFamily: "Poppins" }}>Enter your phone number to receive an OTP.</p>
+        <p style={{ fontFamily: "Poppins" }}>
+          Enter your phone number to receive an OTP.
+        </p>
         <form onSubmit={(e) => e.preventDefault()}>
           <input
             type="text"
@@ -58,12 +62,19 @@ const Register: React.FC = () => {
             className={`input-field ${error ? "error" : ""}`}
             style={{ fontFamily: "Poppins" }}
           />
-          <button onClick={requestOtp} disabled={isLoading} className="button" style={{ fontFamily: "Poppins" }}>
+          <button
+            onClick={requestOtp}
+            disabled={isLoading}
+            className="button"
+            style={{ fontFamily: "Poppins" }}
+          >
             {isLoading ? "Sending OTP..." : "Request OTP"}
           </button>
           {message && (
             <p
-              className={`message ${error ? "error-message" : "success-message"}`}
+              className={`message ${
+                error ? "error-message" : "success-message"
+              }`}
               style={{ fontFamily: "Poppins" }}
             >
               {message}

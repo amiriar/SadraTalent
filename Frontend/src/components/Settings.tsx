@@ -16,23 +16,21 @@ function Settings() {
   const [bio, setBio] = useState("");
 
   const handleClick = () => {
-    const formData = new FormData();
-    formData.append("firstname", firstname);
-    formData.append("lastname", lastname);
-    formData.append("username", username);
-    formData.append("email", email);
-    if (profile) {
-      formData.append("profile", profile);
-    }
-    formData.append("bio", bio);
-    formData.append("customStatus", status);
-
     axios
       .post(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/api/dashboard`,
-        formData,
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/dashboard`,
+        {
+          firstname,
+          lastname,
+          username,
+          email,
+          profile: profileName,
+          bio,
+          customStatus: status,
+        },
         {
           withCredentials: true,
+          method: "application/json",
         }
       )
       .then(() => {
@@ -45,17 +43,17 @@ function Settings() {
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/dashboard/whoami`, {
+      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/dashboard/whoami`, {
         withCredentials: true,
       })
       .then((response) => {
-        setFirstname(response.data.firstname);
-        setLastname(response.data.lastname);
-        setUsername(response.data.username);
-        setProfileName(response.data.profile);
-        setEmail(response.data.email);
-        setStatus(response.data.customStatus);
-        setBio(response.data.bio);
+        setFirstname(response.data.responseObject.firstname);
+        setLastname(response.data.responseObject.lastname);
+        setUsername(response.data.responseObject.username);
+        setProfileName(response.data.responseObject.profile);
+        setEmail(response.data.responseObject.email);
+        setStatus(response.data.responseObject.customStatus);
+        setBio(response.data.responseObject.bio);
       })
       .catch((err) => {
         if (err?.response?.status === 401) navigate("/");
@@ -65,12 +63,31 @@ function Settings() {
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setProfile(e.target.files[0]);
+
+      const formData = new FormData();
+      formData.append("file", e.target.files[0]);
+
+      axios
+        .post(
+          `${import.meta.env.VITE_BACKEND_BASE_URL}/upload/file`,
+          formData,
+          {
+            withCredentials: true,
+            method: "multipart/form-data",
+          }
+        )
+        .then((res) => {
+          setProfileName(res.data.responseObject.filePath);
+        })
+        .catch((err) => {
+          if (err?.response?.status === 401) navigate("/");
+        });
     }
   };
 
   const logoutHandler = () => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/auth/logout`, {
+      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/auth/logout`, {
         withCredentials: true,
       })
       .then(() => {

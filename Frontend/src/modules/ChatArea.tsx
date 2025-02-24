@@ -36,7 +36,7 @@ interface ChatAreaProps {
   setOfflineUsers: (users: Recipient[]) => void;
   setOnlineUsers: (users: Recipient[]) => void;
   setRooms: (rooms: Room[]) => void;
-  setRoom: (room: Room | string) => void;
+  setRoom: (room: Room | string | null) => void;
   setShownRoomName: (name: string) => void;
   pinMessage: Message | null;
   setPinMessage: (message: Message | null) => void;
@@ -74,16 +74,16 @@ function ChatArea({
 }: ChatAreaProps) {
   const extractMetadata = (messages: Message[]) => {
     messages.forEach((message) => {
-      // Only process text messages
       if (message.content) {
-        // Regular expression to match URLs
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const urls = message.content.match(urlRegex);
 
         if (urls) {
-          // Emit event for each URL found in the message
           urls.forEach((url) => {
-            socket?.emit("metadataReader", { url, messageId: message._id });
+            socket?.emit("additional:metadataReader", {
+              url,
+              messageId: message._id,
+            });
           });
         }
       }
@@ -118,24 +118,26 @@ function ChatArea({
 
   const [openForwardModal, setOpenForwardModal] = useState(false);
 
-  const lastMessageRef = useRef<HTMLDivElement | null>(null);
-  const observer = useRef<IntersectionObserver | null>(null);
+  // const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  // const observer = useRef<IntersectionObserver | null>(null);
 
-  const [messageMetadata, setMessageMetadata] = useState<{
-    [key: string]: {
-      messageId?: string;
-      title: string;
-      description: string;
-      image: string;
-      url: string;
-    };
-  }>({});
+  // const [messageMetadata, setMessageMetadata] = useState<{
+  //   [key: string]: {
+  //     messageId?: string;
+  //     title: string;
+  //     description: string;
+  //     image: string;
+  //     url: string;
+  //   };
+  // }>({});
 
-  const [uploadFileProgress, setUploadFileProgress] = useState<number | string>(0);
+  const [uploadFileProgress, setUploadFileProgress] = useState<number | string>(
+    0
+  );
 
   useEffect(() => {
     socket?.on(
-      "metadataReader-response",
+      "additional:metadataReaderResponse",
       (data: {
         metadata: {
           messageId?: string;
@@ -148,80 +150,79 @@ function ChatArea({
         const { metadata } = data;
 
         if (metadata?.messageId) {
-          setMessageMetadata((prev) => ({
-            ...prev,
-            [metadata.messageId as string]: metadata,
-          }));
+          // setMessageMetadata((prev) => ({
+          //   ...prev,
+          //   [metadata.messageId as string]: metadata,
+          // }));
         }
       }
     );
 
     return () => {
-      socket?.off("metadataReader-response");
+      socket?.off("additional:metadataReaderResponse");
     };
   }, [socket]);
 
   useEffect(() => {
-    // Extract metadata whenever message changes
     if (messages) {
       extractMetadata(messages);
     }
   }, [messages]);
 
-  useEffect(() => {
-    if (lastMessageRef.current) {
-      observer.current = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const messageId = entry.target.getAttribute("data-message-id");
-            // Update the message status to 'seen' when this message is in view
-            if (messageId) {
-              updateMessageStatus(messageId, "seen");
-            }
-          }
-        });
-      });
+  // useEffect(() => {
+  //   if (lastMessageRef.current) {
+  //     observer.current = new IntersectionObserver((entries) => {
+  //       entries.forEach((entry) => {
+  //         if (entry.isIntersecting) {
+  //           const messageId = entry.target.getAttribute("data-message-id");
+  //           if (messageId) {
+  //             updateMessageStatus(messageId, "seen");
+  //           }
+  //         }
+  //       });
+  //     });
 
-      if (lastMessageRef.current) {
-        observer.current.observe(lastMessageRef.current);
-      }
-    }
+  //     if (lastMessageRef.current) {
+  //       observer.current.observe(lastMessageRef.current);
+  //     }
+  //   }
 
-    // Clean up observer on component unmount
-    return () => {
-      if (observer.current && lastMessageRef.current) {
-        observer.current.unobserve(lastMessageRef.current);
-      }
-    };
-  }, [messages]);
+  //   return () => {
+  //     if (observer.current && lastMessageRef.current) {
+  //       observer.current.unobserve(lastMessageRef.current);
+  //     }
+  //   };
+  // }, [messages]);
 
-  const updateMessageStatus = (messageId: string, status: string) => {
-    // Send an API request to mark the message as 'seen'
-    // Example API call or socket emission
-    socket?.emit("updateMessageStatus", { messageId, status });
-  };
+  // const updateMessageStatus = (messageId: string, status: string) => {
+  //   socket?.emit("updateMessageStatus", { messageId, status });
+  // };
 
   useEffect(() => {
-    socket?.on("pinMessageResponse", ({ room: responseRoom, message }: any) => {
-      if (room === responseRoom) {
-        setPinMessage(message);
+    socket?.on(
+      "messages:pinMessageResponse",
+      ({ room: responseRoom, message }: any) => {
+        if (room === responseRoom) {
+          setPinMessage(message);
+          // @ts-ignore
 
-        setMessages((prevMessages: Message[]) =>
-          prevMessages.map((msg: Message) =>
-            msg._id === message._id
-              ? { ...msg, isPinned: true }
-              : { ...msg, isPinned: false }
-          )
-        );
+          setMessages((prevMessages: Message[]) =>
+            prevMessages.map((msg: Message) =>
+              msg._id === message._id
+                ? { ...msg, isPinned: true }
+                : { ...msg, isPinned: false }
+            )
+          );
+        }
       }
-    });
+    );
 
     socket?.on(
-      "unpinMessageResponse",
+      "messages:unpinMessageResponse",
       ({ room: responseRoom, message }: any) => {
         if (room === responseRoom) {
           setPinMessage(null);
-
+          // @ts-ignore
           setMessages((prevMessages: Message[]) =>
             prevMessages.map((msg: Message) =>
               msg._id === message._id ? { ...msg, isPinned: false } : msg
@@ -232,15 +233,15 @@ function ChatArea({
     );
 
     return () => {
-      socket?.off("pinMessageResponse");
-      socket?.off("unpinMessageResponse");
+      socket?.off("messages:pinMessageResponse");
+      socket?.off("messages:unpinMessageResponse");
     };
   }, [room, socket]);
 
   const addUserToRoom = (data: { userId: string; room: string }) => {
     const { userId } = data;
 
-    socket?.emit("joinRoom", data);
+    socket?.emit("rooms:joinRoom", data);
 
     setNonParticipantOnlineUsers((prevUsers) =>
       prevUsers.filter((user) => user._id !== userId)
@@ -347,14 +348,14 @@ function ChatArea({
     Swal.fire(deleteMessageOptions).then((result) => {
       if (result.isConfirmed && canDeleteForEveryone) {
         // Emit event to delete for everyone
-        socket?.emit("deleteMessage", {
+        socket?.emit("messages:deleteMessage", {
           messageId: msg._id,
           userId: sender?._id,
           deleteForEveryone: true,
         });
       } else if (result.isDenied) {
         // Emit event to delete for me only
-        socket?.emit("deleteMessage", {
+        socket?.emit("messages:deleteMessage", {
           messageId: msg._id,
           userId: sender?._id,
           deleteForEveryone: false,
@@ -374,7 +375,7 @@ function ChatArea({
         confirmButtonText: "Unpin",
       }).then((result) => {
         if (result.isConfirmed) {
-          socket?.emit("unpinMessage", {
+          socket?.emit("messages:unpinMessage", {
             room,
             messageId: message._id,
           });
@@ -390,7 +391,7 @@ function ChatArea({
         confirmButtonText: "Pin",
       }).then((result) => {
         if (result.isConfirmed) {
-          socket?.emit("pinMessage", {
+          socket?.emit("messages:pinMessage", {
             room,
             messageId: message._id,
           });
@@ -414,7 +415,10 @@ function ChatArea({
       confirmButtonText: "Save",
     }).then((result) => {
       if (result.isConfirmed) {
-        socket?.emit("saveMessage", { recipientId: sender?._id, message });
+        socket?.emit("messages:saveMessage", {
+          recipientId: sender?._id,
+          message,
+        });
       }
     });
   };
@@ -449,7 +453,6 @@ function ChatArea({
   };
 
   const showModalHandler = (room: Room) => {
-    // Filter online users who are NOT in the room participants
     const onlineUsersNotInRoom = onlineUsers.filter(
       (user: Recipient) =>
         !room.participants.some(
@@ -457,7 +460,6 @@ function ChatArea({
         )
     );
 
-    // Filter offline users who are NOT in the room participants
     const offlineUsersNotInRoom = offlineUsers.filter(
       (user: Recipient) =>
         !room.participants.some(
@@ -465,11 +467,9 @@ function ChatArea({
         )
     );
 
-    // Set state for non-participant online and offline users
     setNonParticipantOnlineUsers(onlineUsersNotInRoom);
     setNonParticipantOfflineUsers(offlineUsersNotInRoom);
 
-    // Open the modal
     setOpenModal(true);
   };
 
@@ -483,14 +483,18 @@ function ChatArea({
 
   useEffect(() => {
     const typingTimeout = setTimeout(() => {
-      socket?.emit("isTyping", {
+      socket?.emit("chats:isTyping", {
         senderId: sender?._id,
         room,
         isTyping: false,
       });
     }, 1000);
 
-    socket?.emit("isTyping", { senderId: sender?._id, room, isTyping: true });
+    socket?.emit("chats:isTyping", {
+      senderId: sender?._id,
+      room,
+      isTyping: true,
+    });
 
     return () => clearTimeout(typingTimeout);
   }, [message]);
@@ -500,19 +504,22 @@ function ChatArea({
   );
 
   useEffect(() => {
-    socket?.on("typing", ({ senderId, isTyping }) => {
-      setTypingUsers((prevTypingUsers) => ({
-        ...prevTypingUsers,
-        [senderId]: isTyping,
-      }));
-    });
+    socket?.on(
+      "chats:typing",
+      ({ senderId, isTyping }: { senderId: string; isTyping: boolean }) => {
+        setTypingUsers((prevTypingUsers) => ({
+          ...prevTypingUsers,
+          [senderId]: isTyping,
+        }));
+      }
+    );
 
     return () => {
-      socket?.off("typing");
+      socket?.off("chats:typing");
     };
   }, [socket]);
 
-  const [open, setOpen] = useState(false); // Modal open state
+  const [open, setOpen] = useState(false);
   const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(
     null
   );
@@ -522,16 +529,16 @@ function ChatArea({
 
   const profileHandler = (recipient: Recipient | null, room: Room | string) => {
     if (recipient?.username) {
-      socket?.emit("getUserData", { recipientId: recipient._id });
+      socket?.emit("users:getUserData", { recipientId: recipient._id });
       // set loading on
-      socket?.on("getUserDataResponse", (data: Recipient) => {
+      socket?.on("users:getUserDataResponse", (data: Recipient) => {
         setSelectedRecipient(data);
         // set loading off
         setOpen(true); // Open the user modal
       });
     } else if (typeof room === "object") {
-      socket?.emit("getRoomData", room._id);
-      socket?.on("getRoomDataResponse", (data: Room) => {
+      socket?.emit("rooms:getRoomData", room._id);
+      socket?.on("rooms:getRoomDataResponse", (data: Room) => {
         setSelectedRoom(data);
         setOpenRoomModal(true);
       });
@@ -544,9 +551,10 @@ function ChatArea({
   };
 
   const leaveRoomHandler = (room: Room, sender: string) => {
-    if (room && room.roomName) {
+    // @ts-ignore
+    if (room && room.name) {
       if (confirm("Are You Sure You Want To Do This??")) {
-        socket?.emit("leaveRoom", { room: room._id, sender });
+        socket?.emit("rooms:leaveRoom", { room: room._id, sender });
         setRoom(null);
         setShownRoomName("No room joined");
       }
@@ -556,32 +564,26 @@ function ChatArea({
   const [isEditModalOpen, setEditModalOpen] = useState(false);
 
   const handleEditRoom = (updatedRoom: {
-    roomName: string;
+    name: string;
     bio: string;
     isGroup: boolean;
   }) => {
-    socket?.emit("editRoom", { room: room, ...updatedRoom });
+    socket?.emit("rooms:editRoom", { room: room, ...updatedRoom });
   };
 
   const editRoomHandler = () => {
     setEditModalOpen(true);
   };
 
-  socket?.on("leftRoom", (rooms: Room) => {
+  socket?.on("rooms:leaveRoomResponse", (rooms: Room[]) => {
     setRooms(rooms);
   });
 
-  socket?.on("errorLeavingRoom", ({ room, error }: any) => {
-    alert(`Error leaving room ${room}: ${error}`);
-  });
-
-  socket?.on("userPromoted", (updatedRoom: Room) => {
+  socket?.on("rooms:userPromoted", (updatedRoom: Room) => {
     setSelectedRoom(updatedRoom);
   });
 
-  socket?.on("removeUserResponse", (updatedRoom: Room) => {
-    console.log(updatedRoom);
-
+  socket?.on("rooms:removeUserResponse", (updatedRoom: Room) => {
     setSelectedRoom(updatedRoom);
   });
 
@@ -647,7 +649,7 @@ function ChatArea({
     message: Message,
     recipientId?: string
   ) => {
-    socket?.emit("forwardMessage", {
+    socket?.emit("messages:forwardMessage", {
       message,
       room: room._id,
       senderId: sender?._id,
@@ -663,7 +665,7 @@ function ChatArea({
   };
 
   const handleRemoveUser = (userId: string, roomId: string) => {
-    socket?.emit("removeUser", { senderId: sender?._id, userId, roomId });
+    socket?.emit("rooms:removeUser", { senderId: sender?._id, userId, roomId });
   };
 
   const handlePromoteUser = (
@@ -671,7 +673,7 @@ function ChatArea({
     roomId: string,
     newRole: string
   ) => {
-    socket?.emit("promoteUser", {
+    socket?.emit("rooms:promoteUser", {
       senderId: sender?._id,
       userId,
       roomId,
@@ -691,7 +693,11 @@ function ChatArea({
       ? room._id
       : "";
 
-    socket?.emit("getHistory", { roomName: formattedRoom, page, pageSize });
+    socket?.emit("messages:getHistory", {
+      roomName: formattedRoom,
+      page,
+      pageSize,
+    });
   };
 
   return (
@@ -716,14 +722,16 @@ function ChatArea({
               className="avatar"
             />
           ) : (
-            "Chat Room:"
+            "Chat Room: "
           )}{" "}
-          {typeof shownRoomName === "string"
-            ? shownRoomName
-            : typeof shownRoomName === "object"
-            ? // @ts-ignore
-              shownRoomName.roomName
-            : "No room joined"}
+          <span style={{ marginLeft: "15px" }}>
+            {typeof shownRoomName === "string"
+              ? shownRoomName
+              : typeof shownRoomName === "object"
+              ? // @ts-ignore
+                shownRoomName.name
+              : "No room joined"}
+          </span>
           {Object.keys(typingUsers).map((userId) => {
             if (typingUsers[userId] && userId !== sender?._id) {
               return (
@@ -769,8 +777,8 @@ function ChatArea({
               )}
 
             {typeof room === "object" &&
-              room.roomName !== "General" &&
-              room.roomName !== "Announcements" && (
+              room.name !== "General" &&
+              room.name !== "Announcements" && (
                 <div
                   onClick={() =>
                     leaveRoomHandler(shownRoomName, sender?._id ?? "")
@@ -846,9 +854,7 @@ function ChatArea({
           <video id="localScreenVideo" autoPlay playsInline></video>
           <video id="remoteCameraVideo" autoPlay playsInline></video>
           <video id="remoteScreenVideo" autoPlay playsInline></video> */}
-
-          {messages.map((msg: Message) => {
-            
+          {messages.map((msg: /*Message*/ any) => {
             // @ts-ignore
             const isAdminOrOwner = room.participants?.some(
               (participant: any) =>
@@ -922,18 +928,16 @@ function ChatArea({
                             msg?.sender?._id === sender?._id ? "right" : "left",
                         }}
                       >
-                        
-                        {
-                          msg?.replyTo?.sender?.username ? 
-                          msg?.replyTo?.sender?.username : 
-                          msg?.replyTo?.$__?.parent?.replyTo?.sender?.username
-                        }
+                        {msg?.replyTo?.sender?.username
+                          ? msg?.replyTo?.sender?.username
+                          : msg?.replyTo?.$__?.parent?.replyTo?.sender
+                              ?.username}
                       </span>
                       <span
                         style={{
                           textAlign:
                             msg?.sender?._id === sender?._id ? "right" : "left",
-                            // msg?.sender?._id === sender?._id ? "left" : "right",
+                          // msg?.sender?._id === sender?._id ? "left" : "right",
                         }}
                       >
                         {msg.replyTo.fileUrl
@@ -956,55 +960,42 @@ function ChatArea({
                   >
                     {msg?.content}
                   </p>
-                  {messageMetadata[msg._id ?? ""] && (
+                  {msg.storyId && (
                     <div
                       className="message-metadata"
                       style={{
-                        border: "1px solid #e0e0e0",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: "10px",
+                        margin: "10px 0",
+                        backgroundColor: "#f5f5f5",
                         borderRadius: "8px",
-                        padding: "8px",
-                        margin: "8px 0",
-                        fontSize: "0.9rem",
-                        backgroundColor: "#fff",
+                        padding: "10px",
                       }}
                     >
-                      {messageMetadata[msg._id ?? ""].title && (
-                        <p style={{ margin: "0 0 4px 0", fontWeight: "bold" }}>
-                          {messageMetadata[msg._id ?? ""].title}
+                      <img
+                        src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                          msg.storyId.thumbnail
+                        }`}
+                        alt="Story preview"
+                        style={{
+                          maxWidth: "100px",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                        }}
+                        onClick={() =>
+                          window.open(msg.storyId.hyperLink, "_blank")
+                        }
+                      />
+                      <div>
+                        <p style={{ margin: "0", fontWeight: "bold" }}>
+                          Story Preview
                         </p>
-                      )}
-                      {messageMetadata[msg._id ?? ""].description && (
-                        <p style={{ margin: "0 0 4px 0", color: "#666" }}>
-                          {messageMetadata[msg._id ?? ""].description}
+                        <p style={{ margin: "0", fontSize: "0.9rem" }}>
+                          {msg.storyId.description?.substring(0, 50) + "..."}
                         </p>
-                      )}
-                      {messageMetadata[msg._id ?? ""].image && (
-                        <img
-                          src={messageMetadata[msg._id ?? ""].image}
-                          alt="Link preview"
-                          style={{
-                            maxWidth: "200px",
-                            borderRadius: "4px",
-                            marginTop: "4px",
-                          }}
-                        />
-                      )}
-                      {messageMetadata[msg._id ?? ""].url && (
-                        <a
-                          href={messageMetadata[msg._id ?? ""].url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            color: "#0066cc",
-                            textDecoration: "none",
-                            fontSize: "0.8rem",
-                            display: "block",
-                            marginTop: "4px",
-                          }}
-                        >
-                          {messageMetadata[msg._id ?? ""].url}
-                        </a>
-                      )}
+                      </div>
                     </div>
                   )}
                   <p
@@ -1101,16 +1092,17 @@ function ChatArea({
                           </button>
                         )}
 
-                        {isAdminOrOwner && (
-                          <button
-                            onClick={() => {
-                              toggleOptions(msg._id ?? "");
-                              handlePinMessage(msg);
-                            }}
-                          >
-                            {msg.isPinned ? "Unpin" : "Pin"}
-                          </button>
-                        )}
+                        {isAdminOrOwner ||
+                          (typeof room === "string" && (
+                            <button
+                              onClick={() => {
+                                toggleOptions(msg._id ?? "");
+                                handlePinMessage(msg);
+                              }}
+                            >
+                              {msg.isPinned ? "Unpin" : "Pin"}
+                            </button>
+                          ))}
 
                         <button
                           onClick={() => {
@@ -1199,7 +1191,7 @@ function ChatArea({
                             borderRadius: "8px",
                             cursor: "pointer",
                           }}
-                          onClick={toggleFullScreen}
+                          onClick={toggleFullScreen} // Trigger full screen on click
                         />
 
                         <Dialog
@@ -1233,17 +1225,22 @@ function ChatArea({
                         Your browser does not support the video tag.
                       </video>
                     ) : /\.(zip|rar)$/i.test(msg.fileUrl) ? (
-                      <div style={{
-                        padding: "20px",
-                        border: "1px solid #ccc",
-                        borderRadius: "8px",
-                        backgroundColor: "#f5f5f5"
-                      }}>
+                      <div
+                        style={{
+                          padding: "20px",
+                          border: "1px solid #ccc",
+                          borderRadius: "8px",
+                          backgroundColor: "#f5f5f5",
+                        }}
+                      >
                         <p style={{ margin: 0 }}>
-                          <strong>Compressed File:</strong> {msg.fileUrl.split('/').pop()?.split("*")[0]}
+                          <strong>Compressed File:</strong>{" "}
+                          {msg.fileUrl.split("/").pop()?.split("*")[0]}
                         </p>
-                        <a 
-                          href={`${import.meta.env.VITE_BACKEND_BASE_URL}/${msg.fileUrl}`}
+                        <a
+                          href={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                            msg.fileUrl
+                          }`}
                           download
                           style={{
                             display: "inline-block",
@@ -1252,22 +1249,20 @@ function ChatArea({
                             backgroundColor: "#007bff",
                             color: "white",
                             textDecoration: "none",
-                            borderRadius: "4px"
+                            borderRadius: "4px",
                           }}
                         >
                           Download
                         </a>
                       </div>
-                    ) :  /\.(404)$/i.test(msg.fileUrl) ? (
+                    ) : /\.(404)$/i.test(msg.fileUrl) ? (
                       <p>File not found</p>
                     ) : (
                       <p>Unsupported file format</p>
                     )}
                   </div>
                 )}
-
               </div>
-
             );
           })}
 
@@ -1296,7 +1291,6 @@ function ChatArea({
           </h3>
         </div>
       )}
-
 
       {editMessage ? (
         <div
@@ -1375,35 +1369,51 @@ function ChatArea({
         ""
       )}
 
-      <div style={{ position: 'relative', height: '40px', margin: '10px 0', display: uploadFileProgress !== 0 ? "flex" : "none" }}>
+      <div
+        style={{
+          position: "relative",
+          height: "40px",
+          margin: "10px 0",
+          display: uploadFileProgress !== 0 ? "flex" : "none",
+        }}
+      >
         {uploadFileProgress !== 0 && (
-          <div style={{ width: '100%', height: '8px', backgroundColor: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
-            <div 
-              style={{ 
-                width: `${uploadFileProgress}%`, 
-                height: '100%',
-                backgroundColor: '#2196f3',
-                transition: 'width 0.3s ease',
-                borderRadius: '4px',
-                position: 'relative'
+          <div
+            style={{
+              width: "100%",
+              height: "8px",
+              backgroundColor: "#eee",
+              borderRadius: "4px",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                width: `${uploadFileProgress}%`,
+                height: "100%",
+                backgroundColor: "#2196f3",
+                transition: "width 0.3s ease",
+                borderRadius: "4px",
+                position: "relative",
               }}
             >
-              <span style={{
-                position: 'absolute',
-                top: '12px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                color: '#666',
-                fontSize: '14px',
-                fontWeight: 'bold'
-              }}>
+              <span
+                style={{
+                  position: "absolute",
+                  top: "12px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  color: "#666",
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                }}
+              >
                 {uploadFileProgress}%
               </span>
             </div>
           </div>
         )}
       </div>
-
 
       <ChatInput
         room={room}
@@ -1425,7 +1435,9 @@ function ChatArea({
       />
 
       <ForwardModal
+        // @ts-ignore
         offlineUsers={offlineUsers}
+        // @ts-ignore
         onlineUsers={onlineUsers}
         ModalStyle={ModalStyle}
         openForwardModal={openForwardModal}
@@ -1451,6 +1463,7 @@ function ChatArea({
         onClose={() => setEditModalOpen(false)}
         // @ts-ignore
         room={room}
+        // @ts-ignore
         onSave={handleEditRoom}
       />
 

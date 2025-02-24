@@ -13,8 +13,8 @@ import { FaPaperPlane } from "react-icons/fa";
 import { IUser, Message, Room, Sender } from "./types/types";
 import { FaUserGroup } from "react-icons/fa6";
 interface IForward {
-  offlineUsers: IUser[];
-  onlineUsers: IUser[];
+  offlineUsers: any[];
+  onlineUsers: any[];
   openForwardModal: any;
   handleCloseForwardModal: any;
   ModalStyle: any;
@@ -80,9 +80,11 @@ export default function ForwardModal({
                     }}
                   />
                 </ListItemAvatar>
-                <ListItemText primary={room.roomName} />
+                <ListItemText primary={room?.name} />
                 <Button
-                  onClick={() => forwardMessage(room, selectedMessageToForward, null)}
+                  onClick={() =>
+                    forwardMessage(room, selectedMessageToForward, null)
+                  }
                   sx={{ width: "100px" }}
                 >
                   <FaPaperPlane size={20} />
@@ -108,8 +110,12 @@ export default function ForwardModal({
                   <Avatar
                     src={
                       user._id === sender?._id
-                        ? `${import.meta.env.VITE_BACKEND_BASE_URL}/public/static/savedMessages/saved-messages.jpg`
-                        : `${import.meta.env.VITE_BACKEND_BASE_URL}/${user.profile}`
+                        ? `${
+                            import.meta.env.VITE_BACKEND_BASE_URL
+                          }/public/static/savedMessages/saved-messages.jpg`
+                        : `${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                            user.profile
+                          }`
                     }
                     alt={user.username}
                   />
@@ -122,7 +128,9 @@ export default function ForwardModal({
                   }
                 />
                 <Button
-                  onClick={() => forwardMessage(user, selectedMessageToForward, user._id)}
+                  onClick={() =>
+                    forwardMessage(user, selectedMessageToForward, user._id)
+                  }
                   sx={{ width: "100px" }}
                 >
                   <FaPaperPlane size={20} />
@@ -148,8 +156,12 @@ export default function ForwardModal({
                   <Avatar
                     src={
                       user._id === sender?._id
-                        ? `${import.meta.env.VITE_BACKEND_BASE_URL}/public/static/savedMessages/saved-messages.jpg`
-                        : `${import.meta.env.VITE_BACKEND_BASE_URL}/${user.profile}`
+                        ? `${
+                            import.meta.env.VITE_BACKEND_BASE_URL
+                          }/public/static/savedMessages/saved-messages.jpg`
+                        : `${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                            user.profile
+                          }`
                     }
                     alt={user.username}
                   />

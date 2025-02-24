@@ -3,14 +3,25 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import io, { Socket } from "socket.io-client";
 import "./Home.css";
-import { IoMdSettings } from "react-icons/io";
-import { FaPlus } from "react-icons/fa";
-import { Sender, Recipient, Message, Room } from "../modules/types/types";
+import { FaPlus, FaPlusCircle } from "react-icons/fa";
+import {
+  Sender,
+  Recipient,
+  Message,
+  Room,
+  IStory,
+} from "../modules/types/types";
 import OnlineUsers from "../modules/OnlineUsers";
 import OfflineUsers from "../modules/OfflineUsers";
 import ChatArea from "../modules/ChatArea";
 import checkPageStatus from "../shared/notifications";
 import ErrorHandler from "./ErrorHandler";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/swiper-bundle.css";
+import { Avatar } from "@mui/material";
+import CreateStoryModal from "./CreateStoryModal";
+import Swal from "sweetalert2";
+import StoryModal from "../modules/StoryModal";
 
 interface DeleteMessageResponse {
   success: boolean;
@@ -27,7 +38,6 @@ interface MessageSeenData {
 interface VoiceMessageResponse {
   _id: string;
   content: string;
-  // ... add other necessary properties
 }
 
 const Home: React.FC = () => {
@@ -46,18 +56,25 @@ const Home: React.FC = () => {
   const [editMessage, setEditMessage] = useState<Message | null>(null);
   const [replyMessage, setReplyMessage] = useState<Message | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const [isStoryModalOpen, setIsStoryModalOpen] = useState<boolean>(false);
+  const [isCretaeStoryModalOpen, setIsCreateStoryModalOpen] =
+    useState<boolean>(false);
+  const [currentStory, setCurrentStory] = useState<IStory[] | null>(null);
+  const [currentStoryIndex, setCurrentStoryIndex] = useState(0);
+
+  const [stories, setStories] = useState<any[]>([]);
 
   const navigate = useNavigate();
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/dashboard/whoami`, {
+      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/dashboard/whoami`, {
         withCredentials: true,
       })
       .then((res) => {
-        setSender(res?.data);
-        if (!res?.data.username) navigate("/settings");
-        localStorage.setItem("userId", res?.data?._id ?? "");
+        setSender(res?.data.responseObject);
+        if (!res?.data.responseObject.username) navigate("/settings");
+        localStorage.setItem("userId", res?.data?.responseObject._id ?? "");
       })
       .catch((err) => {
         if (err?.response?.status === 401) {
@@ -69,8 +86,9 @@ const Home: React.FC = () => {
   useEffect(() => {
     if (!sender) return;
 
-    const socketInstance = io(`${import.meta.env.VITE_BACKEND_BASE_URL}`, {
+    const socketInstance = io(`${import.meta.env.VITE_SOCKET_BASE_URL}`, {
       query: { userId: sender._id },
+      transports: ["websocket"],
     });
 
     setSocket(socketInstance);
@@ -91,15 +109,13 @@ const Home: React.FC = () => {
 
   const joinRoom = (roomName: string | Room) => {
     setRecipient(null);
-    setShownRoomName(
-      typeof roomName === "string" ? roomName : roomName.roomName
-    );
+    setShownRoomName(typeof roomName === "string" ? roomName : roomName.name);
     setRoom(roomName);
-    setPublicName(typeof roomName === "string" ? roomName : roomName.roomName);
+    setPublicName(typeof roomName === "string" ? roomName : roomName.name);
 
     if (socket) {
       socket.emit(
-        "joinRoom",
+        "rooms:joinRoom",
         typeof roomName === "string" ? roomName : roomName._id
       );
     }
@@ -121,7 +137,7 @@ const Home: React.FC = () => {
         : roomName
     );
 
-    socket?.emit("joinRoom", roomName);
+    socket?.emit("rooms:joinRoom", roomName);
   };
 
   const settingHandler = () => {
@@ -136,21 +152,20 @@ const Home: React.FC = () => {
   useEffect(() => {
     if (room) {
       const formattedRoom = recipient?._id
-      ? `${sender?._id}-${recipient?._id}`
-      : typeof room === "object"
-      ? room._id
-      : "";
+        ? `${sender?._id}-${recipient?._id}`
+        : typeof room === "object"
+        ? room._id
+        : "";
 
-      socket?.emit("getHistory", { roomName: formattedRoom });
-
+      socket?.emit("messages:getHistory", { roomName: formattedRoom });
       setMessages([]);
 
-      socket?.on("sendHistory", (messageData: Message[]) => {
+      socket?.on("messages:sendHistory", (messageData: Message[]) => {
         setMessages((prevMessages) => [...messageData, ...prevMessages]);
       });
 
       socket?.on(
-        "deleteMessageResponse",
+        "messages:deleteMessageResponse",
         ({
           success,
           messageId,
@@ -195,7 +210,7 @@ const Home: React.FC = () => {
               );
 
               if (unseenMessages.length > 0) {
-                socket?.emit("markMessagesAsSeen", {
+                socket?.emit("messages:seenMessage", {
                   messages: unseenMessages.map((msg) => msg._id),
                   room,
                   userId: sender?._id, // Current user marking messages as seen
@@ -210,10 +225,10 @@ const Home: React.FC = () => {
       }
 
       return () => {
-        socket?.off("deleteMessageResponse");
-        socket?.off("sendHistory");
-        socket?.off("newRoomResponse");
-        socket?.off("message");
+        socket?.off("messages:deleteMessageResponse");
+        socket?.off("messages:sendHistory");
+        socket?.off("rooms:newRoomResponse");
+        socket?.off("messages:message");
 
         if (observer && currentChatEnd) {
           observer.unobserve(currentChatEnd);
@@ -222,7 +237,7 @@ const Home: React.FC = () => {
     }
   }, [room, socket]);
 
-  socket?.on("message", (messageData: Message) => {
+  socket?.on("messages:sendMessage", (messageData: Message) => {
     setMessages((prevMessages) => {
       const currentRoomId = typeof room === "string" ? room : room?._id;
       const messageRoomId = messageData.room;
@@ -247,7 +262,7 @@ const Home: React.FC = () => {
     });
   });
 
-  socket?.on("newRoomResponse", (roomData: Room[]) => {
+  socket?.on("messages:newRoomResponse", (roomData: Room[]) => {
     const userRooms = roomData.filter((room) =>
       room.participants.some(
         (participant) => participant.user.toString() === sender?._id
@@ -258,6 +273,44 @@ const Home: React.FC = () => {
       setRooms(() => [...userRooms]);
     }
   });
+
+  socket?.on("stories:getStoriesResponse", (usersWithStories: IStory[]) => {
+    setStories(usersWithStories);
+  });
+
+  socket?.on(
+    "stories:deleteStoryResponse",
+    ({ message }: { message: string }) => {
+      Swal.fire({
+        title: "Deleted!",
+        text: message,
+        icon: "success",
+        confirmButtonText: "OK",
+      });
+    }
+  );
+
+  // socket?.on(
+  //   "stories:editStoryResponse",
+  //   ({ message }: { story: IStory; message: string }) => {
+  //     Swal.fire({
+  //       title: "Updated!",
+  //       text: message,
+  //       icon: "success",
+  //       confirmButtonText: "OK",
+  //     });
+  //   }
+  // );
+
+  const [seenStoryUser, setSeenStoryUser] = useState([]);
+  const [likesStoryUser, setLikesStoryUser] = useState([]);
+  socket?.on(
+    "stories:usersSeenStoryResponse",
+    ({ seenBy, likes }: { seenBy: any; likes: any }) => {
+      setSeenStoryUser(seenBy);
+      setLikesStoryUser(likes);
+    }
+  );
 
   useEffect(() => {
     const handleVoiceMessageResponse = (messageData: VoiceMessageResponse) => {
@@ -272,13 +325,13 @@ const Home: React.FC = () => {
       });
     };
 
-    socket?.on("fileUpload-respond", (messageData: Message) => {
-      console.log(messageData);
-      
+    socket?.emit("stories:getStories", { userId: sender?._id });
+
+    socket?.on("uploads:fileUploadRespond", (messageData: Message) => {
       setMessages((prevMessages) => [...prevMessages, messageData]);
     });
 
-    socket?.on("editMessageResponse", (messageData: Message) => {
+    socket?.on("stories:editMessageResponse", (messageData: Message) => {
       setEditMessage(null);
       console.log(messageData);
 
@@ -289,7 +342,7 @@ const Home: React.FC = () => {
       );
     });
 
-    socket?.on("forwardMessageResponse", (messageData: Message) => {
+    socket?.on("messages:forwardMessageResponse", (messageData: Message) => {
       setMessages((prevMessages) => {
         const messageExists = prevMessages.some(
           (msg) => msg._id === messageData._id
@@ -301,7 +354,7 @@ const Home: React.FC = () => {
       });
     });
 
-    socket?.on("voice-message-response", handleVoiceMessageResponse);
+    socket?.on("uploads:voiceMessageResponse", handleVoiceMessageResponse);
 
     socket?.on("editRoomResponse", (updatedRoom: Room) => {
       setRooms((prevRooms) =>
@@ -311,7 +364,7 @@ const Home: React.FC = () => {
       );
     });
 
-    socket?.on("messageSeen", (data: MessageSeenData) => {
+    socket?.on("messages:seenMessage", (data: MessageSeenData) => {
       const { messages } = data;
 
       setMessages((prevMessages) =>
@@ -322,42 +375,42 @@ const Home: React.FC = () => {
     });
 
     return () => {
-      socket?.off("messageSeen");
-      socket?.off("voice-message-response", handleVoiceMessageResponse);
-      socket?.off("fileUpload-respond");
-      socket?.off("forwardMessageResponse");
-      socket?.off("editMessageResponse");
-      socket?.off("editRoomResponse");
+      socket?.off("messages:seenMessage");
+      socket?.off("uploads:voiceMessageResponse", handleVoiceMessageResponse);
+      socket?.off("uploads:fileUploadRespond");
+      socket?.off("messages:forwardMessageResponse");
+      socket?.off("messages:editMessageResponse");
+      socket?.off("messages:editRoomResponse");
     };
   }, [socket]);
 
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("error", (error: string) => {
-      ErrorHandler(error);
+    socket.on("error", (error: { message: string }) => {
+      ErrorHandler(error.message);
     });
 
-    socket.on("onlineUsers", (users: Recipient[]) => {
+    socket.on("users:onlineUsers", (users: Recipient[]) => {
       setOnlineUsers(users);
     });
 
-    socket.on("offlineUsers", (users: Recipient[]) => {
+    socket.on("users:offlineUsers", (users: Recipient[]) => {
       setOfflineUsers(users);
     });
 
     return () => {
       socket.off("error");
-      socket.off("onlineUsers");
-      socket.off("offlineUsers");
+      socket.off("users:onlineUsers");
+      socket.off("users:offlineUsers");
     };
   }, [socket]);
 
   useEffect(() => {
     if (socket) {
-      socket.emit("login", sender?._id);
+      socket.emit("users:login", sender?._id);
 
-      socket.on("userRooms", (rooms: Room[]) => {
+      socket.on("users:userRooms", (rooms: Room[]) => {
         setRooms(rooms);
       });
 
@@ -378,24 +431,24 @@ const Home: React.FC = () => {
         );
       };
 
-      socket.on("removeUserResponse", handleRemoveUserResponse);
+      socket.on("rooms:removeUserResponse", handleRemoveUserResponse);
 
       return () => {
-        socket.off("userRooms");
-        socket.off("removeUserResponse", handleRemoveUserResponse);
+        socket.off("users:userRooms");
+        socket.off("rooms:removeUserResponse", handleRemoveUserResponse);
       };
     }
   }, [socket, sender?._id]);
 
   const addRoomHandler = () => {
-    const roomName = prompt("What is the name of the room?");
-    if (roomName?.trim()) {
-      if (roomName.length > 15) {
+    const name = prompt("What is the name of the room?");
+    if (name?.trim()) {
+      if (name.length > 15) {
         alert("Use less then 15 charecters");
         return;
       }
-      socket?.emit("newRoom", {
-        roomName,
+      socket?.emit("rooms:newRoom", {
+        name,
         senderId: sender?._id,
         isGroup: true,
         userId: sender?._id,
@@ -405,6 +458,65 @@ const Home: React.FC = () => {
     }
   };
 
+  const storyHandler = () => {
+    setIsCreateStoryModalOpen((prev) => !prev);
+  };
+
+  const createStoryHandler = () => {
+    setIsCreateStoryModalOpen((prev) => !prev);
+  };
+
+  const storyOpenHandler = (story: IStory[]) => {
+    setCurrentStoryIndex(0);
+    setCurrentStory(story);
+    setIsStoryModalOpen((prev) => !prev);
+  };
+
+  const addStoryHandler = async ({
+    newDescription,
+    newFilePath,
+    newThumbnailPath,
+    hyperLink,
+  }: {
+    newDescription: string;
+    newFilePath: string;
+    newThumbnailPath: string;
+    hyperLink: string;
+  }) => {
+    socket?.emit("stories:addStory", {
+      newDescription,
+      newFilePath,
+      newThumbnailPath,
+      hyperLink,
+    });
+  };
+
+  const deleteHandler = (storyId: string) => {
+    setIsStoryModalOpen(false);
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Once deleted, you will not be able to recover this story!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it!",
+      cancelButtonText: "No, keep it",
+      reverseButtons: true,
+      confirmButtonColor: "#d33",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        socket?.emit("stories:deleteStory", { storyId });
+      }
+    });
+  };
+
+  const seenUsersHandler = (storyId: string) => {
+    socket?.emit("stories:usersSeenStory", { userId: sender?._id, storyId });
+  };
+
+  const linkHandler = (storyId: string) => {
+    socket?.emit("stories:toggleLikeStory", { userId: sender?._id, storyId });
+  };
+
   return (
     <div className="chat-container">
       <div className="sidebar" style={{ fontFamily: "Poppins" }}>
@@ -412,9 +524,26 @@ const Home: React.FC = () => {
           <h2>Chat Rooms</h2>
           <div
             onClick={settingHandler}
-            style={{ cursor: "pointer", boxSizing: "border-box" }}
+            style={{
+              cursor: "pointer",
+              boxSizing: "border-box",
+              position: "relative",
+            }}
           >
-            <IoMdSettings size={30} />
+            <Avatar
+              src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                sender?.profile
+              }`}
+              sx={
+                sender?.stories && sender?.stories?.length > 0
+                  ? { border: "1.5px solid purple" }
+                  : { border: "1px solid lightgreen" }
+              }
+            />
+            {/* <IoMdSettings size={30} /> */}
+            <span className="plus-icon" onClick={storyHandler}>
+              {/* <FaPlusCircle size={19} /> */}
+            </span>
           </div>
         </div>
 
@@ -424,7 +553,7 @@ const Home: React.FC = () => {
             onClick={() => joinRoom(room)}
             className="room-btn"
           >
-            {room.roomName}
+            {room.name}
           </button>
         ))}
 
@@ -432,6 +561,122 @@ const Home: React.FC = () => {
           <FaPlus />
           Add a Room
         </button>
+
+        {/* <div className="stories">
+          <Swiper spaceBetween={50} slidesPerView={2.8} dir="rtl">
+            {stories.map((story, index) => {
+              console.log(stories);
+              
+              return (
+                <SwiperSlide key={index}>
+                  <div
+                    className="story-item"
+                    onClick={() => storyOpenHandler(story)}
+                  >
+                    <img
+                      src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                        story.thumbnail
+                      }`}
+                      alt={String(story._id)}
+                      height={130}
+                      width={100}
+                      style={{ objectFit: "cover", filter: "brightness(20%)" }}
+                    />
+                    <div
+                      style={{
+                        width: "100px",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        position: "absolute",
+                        top: "23%",
+                        color: "white",
+                        gap: 5,
+                      }}
+                    >
+                      <div className="avatar-wrapper">
+                        <Avatar
+                          src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                            story?.user?.profile
+                          }`}
+                          alt={story?.user?.username}
+                          className="avatar"
+                        />
+                      </div>
+                      <h6>{story?.user?.username}</h6>
+                    </div>
+                  </div>
+                </SwiperSlide>
+              );
+            })}
+          </Swiper>
+        </div> */}
+        {/* {stories.length > 0 && ( */}
+        <div className="stories">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "10px",
+            }}
+          >
+            <h2 style={{ marginBottom: 0 }}>Stories:</h2>
+            <FaPlusCircle onClick={storyHandler} size={25} cursor={"pointer"} />
+          </div>
+          <Swiper spaceBetween={50} slidesPerView={2.8} dir="rtl">
+            {stories.map((user, index) => (
+              <SwiperSlide key={index}>
+                <div
+                  className="story-item"
+                  onClick={() =>
+                    user?.stories?.length && storyOpenHandler(user)
+                  }
+                >
+                  <img
+                    src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                      user?.profile
+                    }`}
+                    alt={user?.username}
+                    height={130}
+                    width={100}
+                    style={{ objectFit: "cover", filter: "brightness(35%)" }}
+                  />
+                  <div
+                    style={{
+                      width: "100px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      position: "absolute",
+                      top: "23%",
+                      color: "white",
+                      gap: 5,
+                    }}
+                  >
+                    <div className="avatar-wrapper">
+                      <Avatar
+                        src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                          user.profile
+                        }`}
+                        alt={user.username}
+                        className="avatar"
+                      />
+                    </div>
+                    <h6>
+                      {sender?._id && sender?._id !== String(user?._id)
+                        ? user?.username
+                        : "You"}
+                    </h6>
+
+                    <span>{user?.stories?.length} Stories</span>
+                  </div>
+                </div>
+              </SwiperSlide>
+            ))}
+          </Swiper>
+        </div>
+        {/* )} */}
 
         <div>
           <h2 style={{ marginTop: "20px", fontSize: "1.2rem" }}>
@@ -442,6 +687,9 @@ const Home: React.FC = () => {
             onlineUsers={onlineUsers}
             pvHandler={pvHandler}
             sender={sender}
+            // @ts-ignore
+
+            storyHandler={createStoryHandler}
           />
 
           <OfflineUsers offlineUsers={offlineUsers} pvHandler={pvHandler} />
@@ -465,6 +713,8 @@ const Home: React.FC = () => {
         setOfflineUsers={setOfflineUsers}
         publicName={publicName}
         setRooms={setRooms}
+        // @ts-ignore
+
         setRoom={setRoom}
         pinMessage={pinMessage}
         setPinMessage={setPinMessage}
@@ -474,6 +724,36 @@ const Home: React.FC = () => {
         setReplyMessage={setReplyMessage}
         rooms={rooms}
         chatEndRef={chatEndRef}
+      />
+
+      <CreateStoryModal
+        open={isCretaeStoryModalOpen}
+        onClose={storyHandler}
+        // @ts-ignore
+
+        currentStory={currentStory}
+        setCurrentStory={setCurrentStory}
+        addStoryHandler={addStoryHandler}
+        senderProfile={sender?.profile}
+      />
+
+      <StoryModal
+        onClose={() => setIsStoryModalOpen(false)}
+        open={isStoryModalOpen}
+        // @ts-ignore
+
+        user={currentStory ?? null}
+        senderId={sender?._id}
+        deleteHandler={deleteHandler}
+        currentStoryIndex={currentStoryIndex}
+        setCurrentStoryIndex={setCurrentStoryIndex}
+        scoket={socket}
+        seenUsersHandler={seenUsersHandler}
+        seenStoryUser={seenStoryUser}
+        likesStoryUser={likesStoryUser}
+        linkHandler={linkHandler}
+        offlineUsers={offlineUsers}
+        onlineUsers={onlineUsers}
       />
     </div>
   );

@@ -21,15 +21,16 @@ const Login: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_BASE_URL}/api/auth/login`,
-        { phone, otp },
+      const res = await axios.post(
+        `${import.meta.env.VITE_BACKEND_BASE_URL}/auth/verify-otp`,
+        { phone, code: otp },
         { withCredentials: true }
       );
       setMessage("Login successful.");
       setError(false);
+      // Save the token for future requests
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.responseObject.accessToken}`;
       navigate("/chats");
-      // navigate("/settings");
     } catch (error) {
       setMessage("Invalid OTP or login failed.");
       setError(true);
@@ -39,7 +40,7 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/api/dashboard/whoami`, {
+      .get(`${import.meta.env.VITE_BACKEND_BASE_URL}/dashboard/whoami`, {
         withCredentials: true,
       })
       .then(() => {
@@ -70,12 +71,18 @@ const Login: React.FC = () => {
             className={`input-field ${error && !otp ? "error" : ""}`}
             style={{ fontFamily: "Poppins" }}
           />
-          <button onClick={verifyOtp} disabled={isLoading} style={{ fontFamily: "Poppins" }}>
+          <button
+            onClick={verifyOtp}
+            disabled={isLoading}
+            style={{ fontFamily: "Poppins" }}
+          >
             {isLoading ? "Verifying..." : "Verify OTP"}
           </button>
           {message && (
             <p
-              className={`message ${error ? "error-message" : "success-message"}`}
+              className={`message ${
+                error ? "error-message" : "success-message"
+              }`}
               style={{ fontFamily: "Poppins" }}
             >
               {message}

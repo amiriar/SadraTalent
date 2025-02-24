@@ -61,7 +61,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  margin-right: 10px;
+  /* margin-right: 10px; */
   object-fit: cover;
 }
 
@@ -142,7 +142,7 @@ h2 {
   /* margin-left: 10px; */
 }
 
-.down-icon{
+.down-icon {
   display: flex;
   padding: 10px;
   width: fit-content;
@@ -215,4 +215,47 @@ h2 {
 
 .pinned-message-display.show {
   display: flex;
+}
+
+.avatar-wrapper {
+  display: inline-block;
+  position: relative;
+  width: fit-content; /* Adjust as needed */
+  border-radius: 50%; /* Ensures a circular shape */
+  padding: 2px; /* Space for the gradient border */
+  background: linear-gradient(45deg, #f58529, #dd2a7b, #8134af, #515bd4);
+  background-size: 200% 200%;
+  animation: gradient-animation 3s infinite linear; /* For moving gradient */
+}
+
+.avatar-wrapper .avatar {
+  display: flex;
+  border-radius: 50%; /* Ensure circular shape */
+  width: 40px; /* Adjust size as needed */
+  height: 40px; /* Match width */
+  border: 1px solid white; /* Inner border, mimicking Instagram */
+  object-fit: cover;
+}
+
+@keyframes gradient-animation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.stories {
+  position: relative;
+  margin-top: 10px;
+  border-radius: 10px;
+}
+
+.story-item {
+  position: relative;
+  cursor: pointer;
 }

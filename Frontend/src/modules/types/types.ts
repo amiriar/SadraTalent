@@ -1,4 +1,4 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { ObjectId, Schema } from "mongoose";
 
 export interface Message {
   _id?: string;
@@ -26,7 +26,7 @@ export interface ReplyTo {
   voiceUrl?: string;
   fileUrl?: string;
   timestamp: Date;
-  $__?: unknown;
+  $__?: any;
 }
 
 export interface Sender {
@@ -34,6 +34,7 @@ export interface Sender {
   username?: string;
   phone?: string;
   profile?: string;
+  stories?: string[];
 }
 
 export interface Recipient {
@@ -41,7 +42,9 @@ export interface Recipient {
   username?: string;
   phone?: string;
   profile?: string;
-  customStatus?: string;
+  customStatus: string;
+  stories: string[];
+  lastSeen?: Date;
 }
 
 export interface Room {
@@ -57,6 +60,24 @@ export interface Room {
   isGroup: boolean;
   createdAt: Date;
   isPublic: boolean;
+}
+
+export interface IStory {
+  _id: ObjectId;
+  description: string;
+  file: string;
+  thumbnail: string;
+  hyperLink: string;
+  createdAt: Date;
+  updatedAt: Date;
+  expireAt: Date;
+  user: {
+    _id: ObjectId;
+    profile: string;
+    username: string;
+  };
+  isDeleted: boolean;
+  likes: ObjectId[];
 }
 
 export interface IUser {
