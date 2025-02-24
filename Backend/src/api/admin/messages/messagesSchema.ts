@@ -1,24 +1,23 @@
+import { IUpload } from "@/api/uploads/uploadsSchema";
 import mongoose, { Document, ObjectId, Schema } from "mongoose";
 
 export interface IUserInfo {
   _id: ObjectId | string;
   username: string;
-  profile: string;
+  profile: IUpload | string;
   phone: string;
 }
 
 export interface IMessage extends Document {
   sender: IUserInfo;
-  aspSender: IUserInfo;
   receiver: IUserInfo;
-  aspReceiver: IUserInfo;
   content: string;
   room: string;
   // timestamp: Date;
   // date: string;
   status: "sent" | "delivered" | "seen";
-  voiceUrl?: string;
-  fileUrl?: string;
+  voiceUrl?: IUpload | string;
+  fileUrl?: IUpload | string;
   isEdited: boolean;
   isPinned: boolean;
   isDeleted: boolean;
@@ -44,8 +43,8 @@ const MessageSchema = new Schema<IMessage>(
       enum: ["sent", "delivered", "seen", "detail"],
       default: "sent",
     },
-    voiceUrl: { type: String, required: false },
-    fileUrl: { type: String, required: false },
+    voiceUrl: { type: Schema.Types.ObjectId, ref: "Upload", required: false },
+    fileUrl: { type: Schema.Types.ObjectId, ref: "Upload", required: false },
     isPinned: { type: Boolean, default: false },
     isEdited: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },

@@ -41,7 +41,7 @@ const UserSchema = new Schema<IUser>(
     lastSeen: { type: Date },
     refreshToken: { type: String },
     refreshTokenExpires: { type: Date },
-    stories: { type: [Types.ObjectId], ref: "story", default: [] },
+    stories: { type: [Types.ObjectId], ref: "Story", default: [] },
   },
   { timestamps: true }
 );

@@ -6,7 +6,7 @@ import { StatusCodes } from "http-status-codes";
 import jwt from "jsonwebtoken";
 import createHttpError from "http-errors";
 
-// Updated response handler function using ServiceResponse
+// Response handler function
 const handleResponse = (res: Response, status: number, message: string) => {
   const serviceResponse = ServiceResponse.failure(message, null, status);
   return res.status(status).send(serviceResponse);
@@ -18,8 +18,26 @@ export const AuthGuard = async (
   next: NextFunction
 ) => {
   try {
+    let token: string | undefined;
+
+    // Check Authorization header
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+
+    // Check cookies if header is not present
+    if (!token && req.headers.cookie) {
+      const cookies = req.headers.cookie.split('; ').reduce((acc, cookie) => {
+        const [name, value] = cookie.split('=');
+        acc[name] = value;
+        return acc;
+      }, {} as Record<string, string>);
+      token = cookies.accessToken;
+    }
+
+    // If no token is found
+    if (!token) {
       return handleResponse(
         res,
         StatusCodes.UNAUTHORIZED,
@@ -27,26 +45,22 @@ export const AuthGuard = async (
       );
     }
 
-    const token = authHeader.split(" ")[1];
-
     // Verify token
     const decodedToken = jwt.verify(
       token,
       process.env.JWT_SECRET as string
     ) as { _id: string; role: string };
 
-    // // Find user from token payload
+    // Optionally check if user exists in the database
     // const user = await UserModel.findById(decodedToken._id);
     // if (!user) {
     //   return handleResponse(res, StatusCodes.UNAUTHORIZED, "Unauthorized: Invalid token");
     // }
 
-    // Attach user to the request
     req.user = decodedToken;
     next();
   } catch (error: any) {
     logger.error(`AuthGuard Error: ${error.message}`);
-    next(createHttpError.Unauthorized("1وارد حساب کاربری خود شوید"));
     return handleResponse(
       res,
       StatusCodes.UNAUTHORIZED,

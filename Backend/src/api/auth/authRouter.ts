@@ -148,22 +148,8 @@ authRegistry.registerPath({
 });
 authRouter.post(
   "/send-otp",
-  validateRequest(
-    z.object({
-      body: z.object({
-        phone: z.string(),
-      }),
-    })
-  ),
-  async (req, res) => {
-    try {
-      const { phone } = req.body;
-      const serviceResponse = await authService.sendOtp(phone);
-      return handleServiceResponse(serviceResponse, res);
-    } catch (error) {
-      return res.status(500).json({ error: "An unexpected error occurred" });
-    }
-  }
+  validateRequest(z.object({ body: z.object({ phone: z.string() }) })),
+  authController.sendOtp
 );
 
 // Verify OTP
@@ -196,9 +182,10 @@ authRouter.post(
   //     code: z.string(),
   //   })
   // ),
-  async (req, res) => {
-    const { phone, code } = req.body;
-    const serviceResponse = await authService.loginWithOtp(phone, code);
-    return handleServiceResponse(serviceResponse, res);
-  }
+  authController.verifyOtp
+  // async (req, res) => {
+  //   const { phone, code } = req.body;
+  //   const serviceResponse = await authController.verifyOtp(phone, code);
+  //   return handleServiceResponse(serviceResponse, res);
+  // }
 );

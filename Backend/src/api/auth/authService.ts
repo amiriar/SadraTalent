@@ -321,7 +321,6 @@ export class AuthService {
     return ServiceResponse.success("OTP verified", true);
   }
 
-  // Modified login method to support OTP
   async loginWithOtp(
     phone: string,
     code: string

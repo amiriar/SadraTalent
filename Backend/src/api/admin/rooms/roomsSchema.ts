@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 export interface IRoom extends Document {
-  profile?: string;
+  profile?: Schema.Types.ObjectId;
   name: string;
   bio?: string;
   pinnedMessages?: string[] | null;
@@ -18,7 +18,7 @@ export interface IRoom extends Document {
 interface ParticipantUser {
   _id: Types.ObjectId;
   username: string;
-  profile?: string;
+  profile?: Schema.Types.ObjectId;
 }
 
 const ParticipantSchema = new Schema({
@@ -33,7 +33,7 @@ const ParticipantSchema = new Schema({
 
 const RoomSchema = new Schema<IRoom>(
   {
-    profile: { type: String },
+    profile: { type: Schema.Types.ObjectId, ref:"Upload" },
     name: { type: String, required: true, maxlength: 20 },
     bio: { type: String, maxlength: 200 },
     pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],

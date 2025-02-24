@@ -132,7 +132,7 @@ export class UploadsService {
         throw new Error("File size is missing");
       }
 
-      await this.#uploadsRepository.uploadFile(
+      const uploadedFile = await this.#uploadsRepository.uploadFile(
         fileAddress,
         file.mimetype,
         uploadedBy,
@@ -140,6 +140,7 @@ export class UploadsService {
       );
 
       return ServiceResponse.success<Partial<IUpload>>(successMessage, {
+        _id: uploadedFile?._id,
         filePath: fileAddress,
         fileType: file.mimetype,
         fileSize: file.size,

@@ -4,6 +4,7 @@ import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 extendZodWithOpenApi(z);
 
 export const UploadSchema = z.object({
+  _Id: z.string(),
   filePath: z.string(),
   // type: z.enum(["image", "audio", "video", "document"]),
   type: z.string(),

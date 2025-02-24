@@ -18,7 +18,6 @@ class UploadController {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
     }
-
     const serviceResponse = await this.#uploadService.uploadVoice(req);
     return handleServiceResponse(serviceResponse, res);
   };

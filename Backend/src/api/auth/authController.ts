@@ -39,15 +39,25 @@ class AuthController {
   };
 
   public sendOtp: RequestHandler = async (req: Request, res: Response) => {
-    const { phoneNumber } = req.body;
-    const serviceResponse = await authService.sendOtp(phoneNumber);
+    const { phone } = req.body;
+    const serviceResponse = await authService.sendOtp(phone);
     return handleServiceResponse(serviceResponse, res);
   };
 
+  // public loginWithOtp: RequestHandler = async (req: Request, res: Response) => {
+  //   const { phone, code } = req.body;
+  //   const serviceResponse = await authService.sendOtp(phone, code);
+  //   return handleServiceResponse(serviceResponse, res);
+  // };
+
   public verifyOtp: RequestHandler = async (req: Request, res: Response) => {
-    const { email, otp } = req.body;
-    const serviceResponse = await authService.loginWithOtp(email, otp);
-    return handleServiceResponse(serviceResponse, res);
+    const { phone, code } = req.body;
+    const serviceResponse = await authService.loginWithOtp(phone, code);
+    if (serviceResponse.success) {
+      // @ts-ignore
+      res.cookie("accessToken", serviceResponse?.responseObject?.accessToken);
+      return handleServiceResponse(serviceResponse, res);
+    }
   };
 }
 
