@@ -47,6 +47,15 @@ app.use(
 );
 app.use(helmet());
 app.use(rateLimiter);
+
+app.use("/public", (req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin"); // Ensure cross-origin resource loading
+  next();
+});
+
 app.use("/public", express.static(path.join(__dirname, "..", "public")));
 
 // Request logging
