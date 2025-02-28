@@ -7,25 +7,140 @@ export const userEvents = (
   socket: Socket,
   io: Server,
   userSocketId: string,
-  userId: string
+  userId: string,
+  onlineUsers: Map<string, any> = new Map()
 ) => {
-  const onlineUsers = new Map();
+  // socket.on("users:login", async () => {
+  //   try {
+  //     const user = await UserModel.findById(userId).select("_id username");
+  //     if (!user) {
+  //       return socket.emit("error", { message: "User not found" });
+  //     }
+
+  //     console.log(`User ${user.username} logged in`);
+
+  //     const publicRooms = await RoomModel.find({
+  //       name: {
+  //         $in: [DefaultRoomNames.General, DefaultRoomNames.Announcements],
+  //       },
+  //       isDeleted: false,
+  //     })
+  //       .select("_id name")
+  //       .lean();
+
+  //     for (const room of publicRooms) {
+  //       socket.join(room._id.toString());
+
+  //       const isUserAlreadyInRoom = await RoomModel.findOne({
+  //         _id: room._id,
+  //         "participants.user": user._id,
+  //         isDeleted: false,
+  //       });
+
+  //       if (!isUserAlreadyInRoom) {
+  //         await RoomModel.updateOne(
+  //           { _id: room._id, isDeleted: false },
+  //           {
+  //             $addToSet: { participants: { user: user._id, role: "member" } },
+  //           }
+  //         ).lean();
+  //       }
+
+  //       console.log(`User ${user.username} joined ${room.name}`);
+  //     }
+
+  //     const userRooms = await RoomModel.find({
+  //       $or: [
+  //         { isPublic: true },
+  //         { "participants.user": user._id },
+  //         { isDeleted: false },
+  //       ],
+  //     })
+  //       .select("_id name isGroup createdAt participants bio")
+  //       .populate("participants.user", "username profile phoneNumber");
+
+  //     userRooms.forEach((room: any) => {
+  //       socket.join(room._id.toString());
+  //     });
+
+  //     await sendOnlineUsers();
+  //     socket.emit("users:userRooms", userRooms);
+  //   } catch (err) {
+  //     console.error("Error logging in user:", err);
+  //     socket.emit("error", { message: "Login failed" });
+  //   }
+  // });
+
+  // socket.on("users:disconnect", async () => {
+  //   const lastSeen = new Date();
+
+  //   await UserModel.updateOne({ _id: userId }, { lastSeen });
+
+  //   socket.leave(userId as string); // mongo id
+  //   socket.leave(userSocketId); // socket id
+
+  //   const allUsers = await UserModel.find().select(
+  //     "_id username profile lastSeen bio lastname firstname email stories"
+  //   );
+
+  //   allUsers.forEach((user: any) => {
+  //     user["userSocketId"] = userSocketId;
+  //   });
+
+  //   await sendOnlineUsers();
+  //   io.emit("users:getUsersResponse", allUsers);
+  // });
+  
+  // const sendOfflineUsers = async (socket: Socket) => {
+  //   const allUsers = await UserModel.find().select(
+  //     "_id username profile lastSeen bio lastname firstname email stories"
+  //   );
+
+  //   const offlineUsers = allUsers.filter(
+  //     (user: any) => !onlineUsers.has(user._id.toString())
+  //   );
+
+  //   socket.emit("users:offlineUsers", offlineUsers);
+  // };
+
+  // const sendOnlineUsers = async () => {
+  //   try {
+  //     const user = await UserModel.findById(userId, {
+  //       __v: 0,
+  //       otp: 0,
+  //       otpExpire: 0,
+  //       refreshToken: 0,
+  //       lastDateIn: 0,
+  //     });
+
+  //     if (user) {
+  //       onlineUsers.set(userId, user);
+  //       io.emit("users:onlineUsers", Array.from(onlineUsers.values()));
+  //       sendOfflineUsers(socket);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching user or updating online users:", error);
+  //   }
+  // };
+
+
+  // ✅ Handle User Login
 
   socket.on("users:login", async () => {
     try {
-      await sendOnlineUsers();
-      
-      const user = await UserModel.findById(userId).select("_id username");
+      const user = await UserModel.findById(userId).select("_id username profile");
       if (!user) {
         return socket.emit("error", { message: "User not found" });
       }
 
-      console.log(`User ${user.username} logged in`);
+      console.log(`✅ User ${user.username} logged in`);
 
+      // Store user in onlineUsers map
+      onlineUsers.set(userId, { _id: userId, socketId: socket.id, username: user.username, profile: user.profile });
+
+      // Fetch public rooms (General & Announcements)
       const publicRooms = await RoomModel.find({
-        name: {
-          $in: [DefaultRoomNames.General, DefaultRoomNames.Announcements],
-        },
+        name: { $in: ["General", "Announcements"] },
         isDeleted: false,
       })
         .select("_id name")
@@ -43,21 +158,16 @@ export const userEvents = (
         if (!isUserAlreadyInRoom) {
           await RoomModel.updateOne(
             { _id: room._id, isDeleted: false },
-            {
-              $addToSet: { participants: { user: user._id, role: "member" } },
-            }
-          ).lean();
+            { $addToSet: { participants: { user: user._id, role: "member" } } }
+          );
         }
 
-        console.log(`User ${user.username} joined ${room.name}`);
+        console.log(`✅ User ${user.username} joined ${room.name}`);
       }
 
+      // Fetch all rooms the user is in
       const userRooms = await RoomModel.find({
-        $or: [
-          { isPublic: true },
-          { "participants.user": user._id },
-          { isDeleted: false },
-        ],
+        $or: [{ isPublic: true }, { "participants.user": user._id }, { isDeleted: false }],
       })
         .select("_id name isGroup createdAt participants bio")
         .populate("participants.user", "username profile phoneNumber");
@@ -66,33 +176,47 @@ export const userEvents = (
         socket.join(room._id.toString());
       });
 
+      // Update online users & notify clients
+      await sendOnlineUsers();
       socket.emit("users:userRooms", userRooms);
     } catch (err) {
-      console.error("Error logging in user:", err);
+      console.error("❌ Error logging in user:", err);
       socket.emit("error", { message: "Login failed" });
     }
   });
 
-  socket.on("users:disconnect", async () => {
-    const lastSeen = new Date();
+  // ✅ Handle User Disconnect
+  socket.on("disconnect", async () => {
+    if (onlineUsers.has(userId)) {
+      onlineUsers.delete(userId); // Remove from online users
+    }
 
+    const lastSeen = new Date();
     await UserModel.updateOne({ _id: userId }, { lastSeen });
 
-    socket.leave(userId as string); // mongo id
-    socket.leave(userSocketId); // socket id
+    console.log(`❌ User ${userId} disconnected`);
 
-    const allUsers = await UserModel.find(
-      // for now its gonna be all users, later we will filter by contacts
-      {},
-      "_id username profile lastSeen bio lastname firstname email stories"
-    );
-
-    allUsers.forEach((user: any) => {
-      user["userSocketId"] = userSocketId;
-    });
-
-    io.emit("users:getUsersResponse", allUsers);
+    await sendOnlineUsers(); // Update online users list
   });
+
+  // ✅ Send Online Users
+  const sendOnlineUsers = async () => {
+    try {
+      io.emit("users:onlineUsers", Array.from(onlineUsers.values()));
+      await sendOfflineUsers();
+    } catch (error) {
+      console.error("❌ Error sending online users:", error);
+    }
+  };
+
+  // ✅ Send Offline Users
+  const sendOfflineUsers = async () => {
+    const allUsers = await UserModel.find().select("_id username profile lastSeen");
+
+    const offlineUsers = allUsers.filter((user: any) => !onlineUsers.has(user._id.toString()));
+
+    io.emit("users:offlineUsers", offlineUsers);
+  };
 
   socket.on("users:getUsers", async () => {
     const allUsers = await UserModel.find(
@@ -119,36 +243,5 @@ export const userEvents = (
     io.emit("users:getUserDataResponse", recipient);
   });
 
-  const sendOfflineUsers = async (socket: Socket) => {
-    const allUsers = await UserModel.find(
-      {},
-      "_id username profile lastSeen bio lastname firstname email stories"
-    );
 
-    const offlineUsers = allUsers.filter(
-      (user: any) => !onlineUsers.has(user._id.toString())
-    );
-
-    socket.emit("users:offlineUsers", offlineUsers);
-  };
-
-  const sendOnlineUsers = async () => {
-    try {
-      const user = await UserModel.findById(userId, {
-        __v: 0,
-        otp: 0,
-        otpExpire: 0,
-        refreshToken: 0,
-        lastDateIn: 0,
-      });
-
-      if (user) {
-        onlineUsers.set(userId, user);
-        io.emit("users:onlineUsers", Array.from(onlineUsers.values()));
-        sendOfflineUsers(socket);
-      }
-    } catch (error) {
-      console.error("Error fetching user or updating online users:", error);
-    }
-  };
 };
