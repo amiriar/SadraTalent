@@ -35,7 +35,10 @@ class AuthController {
   public logout: RequestHandler = async (req: Request, res: Response) => {
     const user = req.user;
     const serviceResponse = await authService.logout(user?._id as string);
-    return handleServiceResponse(serviceResponse, res);
+    if (serviceResponse.success) {
+      res.clearCookie("accessToken");
+      return handleServiceResponse(serviceResponse, res);
+    }
   };
 
   public sendOtp: RequestHandler = async (req: Request, res: Response) => {
@@ -53,11 +56,13 @@ class AuthController {
   public verifyOtp: RequestHandler = async (req: Request, res: Response) => {
     const { phone, code } = req.body;
     const serviceResponse = await authService.loginWithOtp(phone, code);
-    if (serviceResponse.success) {
+    console.log(serviceResponse);
+
+    if (serviceResponse.success)
       // @ts-ignore
       res.cookie("accessToken", serviceResponse?.responseObject?.accessToken);
-      return handleServiceResponse(serviceResponse, res);
-    }
+
+    return handleServiceResponse(serviceResponse, res);
   };
 }
 
