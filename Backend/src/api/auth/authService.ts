@@ -268,7 +268,7 @@ export class AuthService {
 
     let user = await this.userRepository.findByPhoneAsync(phone);
     if (!user) {
-      user = await UserModel.create({ phone });
+      user = await UserModel.create({ phoneNumber: phone });
       await user.save();
     }
 

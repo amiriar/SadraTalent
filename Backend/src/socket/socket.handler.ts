@@ -8,10 +8,12 @@ import { uploadEvents } from "./events/UploadEvents";
 import { chatEvents } from "./events/ChatsEvents";
 
 export const handleSocketConnections = (io: Server) => {
+  const onlineUsers = new Map();
   io.on("connection", async (socket: Socket) => {
     console.log(`New user connected: ${socket.id}`);
 
     const userId = socket.handshake.query.userId as string;
+    onlineUsers.set(userId, socket.id);
 
     if (!userId) {
       socket.disconnect();
@@ -29,8 +31,10 @@ export const handleSocketConnections = (io: Server) => {
       uploadEvents,
     ];
 
-    eventHandlers.forEach((handler) => handler(socket, io, socket.id, userId));
-    
+    eventHandlers.forEach((handler) =>
+      handler(socket, io, socket.id, userId, onlineUsers)
+    );
+
     // const sendOfflineUsers = async (socket: Socket) => {
     //   const allUsers = await UserModel.find(
     //     {},

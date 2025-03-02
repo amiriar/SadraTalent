@@ -116,7 +116,7 @@ authRouter.post(
 
 // Logout user
 authRegistry.registerPath({
-  method: "post",
+  method: "get",
   path: "/auth/logout",
   tags: ["Auth"],
   responses: {
@@ -128,7 +128,7 @@ authRegistry.registerPath({
     },
   },
 });
-authRouter.post("/logout", AuthGuard, authController.logout);
+authRouter.get("/logout", AuthGuard, authController.logout);
 
 // Send OTP
 authRegistry.registerPath({
@@ -174,18 +174,4 @@ authRegistry.registerPath({
     "OTP verified successfully"
   ),
 });
-authRouter.post(
-  "/verify-otp",
-  // validateRequest(
-  //   z.object({
-  //     phone: z.string(),
-  //     code: z.string(),
-  //   })
-  // ),
-  authController.verifyOtp
-  // async (req, res) => {
-  //   const { phone, code } = req.body;
-  //   const serviceResponse = await authController.verifyOtp(phone, code);
-  //   return handleServiceResponse(serviceResponse, res);
-  // }
-);
+authRouter.post("/verify-otp", authController.verifyOtp);

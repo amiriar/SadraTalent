@@ -52,7 +52,7 @@ const CreateStoryModal: React.FC<StoryModalProps> = ({
         const formData = new FormData();
         formData.append("story", newFile);
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_BASE_URL}/messages/upload-story`,
+          `${import.meta.env.VITE_BACKEND_BASE_URL}/upload/story`,
           formData,
           {
             headers: {
@@ -66,7 +66,7 @@ const CreateStoryModal: React.FC<StoryModalProps> = ({
             },
           }
         );
-        setNewFilePath(response.data);
+        setNewFilePath(response.data.responseObject._id);
       } catch (error) {
         console.error("Error uploading story:", error);
       }

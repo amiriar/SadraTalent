@@ -6,7 +6,8 @@ export const uploadEvents = (
   socket: Socket,
   io: Server,
   userSocketId: string,
-  userId: string
+  userId: string,
+  onlineUsers: Map<string, any> = new Map()
 ) => {
   socket.on("uploads:fileUpload", async (data: any) => {
     try {

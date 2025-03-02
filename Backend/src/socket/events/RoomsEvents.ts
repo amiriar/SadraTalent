@@ -6,7 +6,8 @@ export const roomsEvents = (
   socket: Socket,
   io: Server,
   userSocketId: string,
-  userId: string
+  userId: string,
+  onlineUsers: Map<string, any> = new Map()
 ) => {
   socket.on("rooms:joinRoom", async (room: IRoom) => {
     const isUserInRoom = await RoomModel.findOne({

@@ -5,7 +5,8 @@ export const chatEvents = (
   socket: Socket,
   io: Server,
   userSocketId: string,
-  userId: string
+  userId: string,
+  onlineUsers: Map<string, any> = new Map()
 ) => {
   socket.on("chats:isTyping", (data) => {
     const { room, isTyping } = data;

@@ -96,7 +96,7 @@ const StoryModal = ({
 
   useEffect(() => {
     if (scoket && user && currentStory) {
-      scoket.emit("seenStory", { userId: senderId, storyId: currentStory._id });
+      scoket.emit("stories:seenStory", { userId: senderId, storyId: currentStory._id });
     }
   }, [currentStory, scoket, user]);
 
@@ -237,7 +237,9 @@ const StoryModal = ({
                 >
                   <img
                     src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                      currentStory.file
+                      typeof currentStory.file === "object"
+                        ? currentStory.file.filePath
+                        : ""
                     }`}
                     alt="Story"
                     style={{

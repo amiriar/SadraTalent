@@ -254,10 +254,9 @@ const Home: React.FC = () => {
         updatedMessages.push(messageData);
       }
 
-      if (recipient && sender?._id !== messageData?.recipient?._id) {
+      if (recipient && sender?._id !== messageData?.receiver?._id) {
         checkPageStatus(messageData.content, messageData.sender ?? "");
       }
-
       return updatedMessages;
     });
   });
@@ -333,7 +332,6 @@ const Home: React.FC = () => {
 
     socket?.on("stories:editMessageResponse", (messageData: Message) => {
       setEditMessage(null);
-      console.log(messageData);
 
       setMessages((prevMessages) =>
         prevMessages.map((msg) =>
@@ -729,7 +727,6 @@ const Home: React.FC = () => {
       <CreateStoryModal
         open={isCretaeStoryModalOpen}
         onClose={storyHandler}
-        // @ts-ignore
 
         currentStory={currentStory}
         setCurrentStory={setCurrentStory}

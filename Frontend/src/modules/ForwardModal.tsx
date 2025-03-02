@@ -103,7 +103,7 @@ export default function ForwardModal({
           {onlineUsers.length > 0 ? (
             onlineUsers.map((user: IUser) => (
               <ListItem
-                key={user._id}
+                key={user?._id ?? ""}
                 sx={{ display: "flex", justifyContent: "space-between" }}
               >
                 <ListItemAvatar>

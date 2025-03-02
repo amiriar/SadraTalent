@@ -1,13 +1,15 @@
 import MessageModel from "@/api/admin/messages/messagesSchema";
 import StoryModel from "@/api/admin/stories/storiesSchema";
 import UserModel from "@/api/admin/user/userSchema";
+import mongoose from "mongoose";
 import { Socket, Server } from "socket.io";
 
 export const storiesEvents = (
   socket: Socket,
   io: Server,
   userSocketId: string,
-  userId: string
+  userId: string,
+  onlineUsers: Map<string, any> = new Map()
 ) => {
   socket.on("stories:getStories", async () => {
     try {
@@ -22,6 +24,11 @@ export const storiesEvents = (
             isDeleted: false,
           },
           select: "-__v",
+          populate: {
+            path: "file", // Populating the `file` field inside `stories`
+            model: "Upload", // Assuming `Upload` is the model name
+            select: "-__v", // Exclude version key if needed
+          },
         })
         .select("_id username profile stories")
         .lean();
@@ -48,7 +55,8 @@ export const storiesEvents = (
     }
   });
 
-  socket.on("stories:usersSeenStory",
+  socket.on(
+    "stories:usersSeenStory",
     async ({ storyId }: { storyId: string }) => {
       try {
         const story = await StoryModel.findById(storyId)
@@ -66,11 +74,11 @@ export const storiesEvents = (
         }
 
         const filteredSeenBy = story.seenBy.filter(
-          (user) => user._id.toString() !== userId
+          (user) => user._id?.toString() !== userId
         );
 
         const filteredLikes = story.likes.filter(
-          (user) => user._id.toString() !== userId
+          (user) => user._id?.toString() !== userId
         );
 
         socket.emit("stories:usersSeenStoryResponse", {
@@ -91,7 +99,8 @@ export const storiesEvents = (
         const story = new StoryModel({
           description: newDescription,
           file: newFilePath,
-          thumbnail: newThumbnailPath,
+          thumbnail: newFilePath,
+          // thumbnail: newThumbnailPath,
           hyperLink: hyperLink,
           user: userId,
           isDeleted: false,
@@ -153,22 +162,29 @@ export const storiesEvents = (
       try {
         const story = await StoryModel.findById(storyId);
 
-        // @ts-ignore
-        if (story?.likes.includes(userId)) {
-          await StoryModel.findByIdAndUpdate(storyId, {
-            $pull: { likes: userId },
-          });
-          const updatedStory = await StoryModel.findById(storyId);
+        if (story?.likes.includes(new mongoose.Types.ObjectId(userId))) {
+          const updatedStory = await StoryModel.findByIdAndUpdate(
+            storyId,
+            {
+              $pull: { likes: userId },
+            },
+            { new: true }
+          );
+
           socket.emit("stories:toggleLikeStory", {
             storyId,
             success: true,
             likes: updatedStory?.likes,
           });
         } else {
-          await StoryModel.findByIdAndUpdate(storyId, {
-            $addToSet: { likes: userId },
-          });
-          const updatedStory = await StoryModel.findById(storyId);
+          const updatedStory = await StoryModel.findByIdAndUpdate(
+            storyId,
+            {
+              $addToSet: { likes: userId },
+            },
+            { new: true }
+          );
+
           socket.emit("stories:toggleLikeStory", {
             storyId,
             success: true,

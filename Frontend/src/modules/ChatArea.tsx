@@ -12,13 +12,14 @@ import ChatInput from "./ChatInput";
 import Swal, { SweetAlertOptions } from "sweetalert2";
 import { MdOutlineModeEditOutline } from "react-icons/md";
 import { GrFormPin } from "react-icons/gr";
-import { IoIosChatbubbles } from "react-icons/io";
+import { IoIosChatbubbles, IoMdSearch } from "react-icons/io";
 import ForwardModal from "./ForwardModal";
 import JoinRoomModal from "./JoinRoomModal";
 import { RiShareForwardFill } from "react-icons/ri";
 import EditRoomModal from "./EditRoomModal";
 import MessageStatus from "./MessageStatus";
 import RoomModal from "./RoomModal";
+import SearchModal from "./SearchModal";
 
 interface ChatAreaProps {
   offlineUsers: Recipient[];
@@ -545,6 +546,29 @@ function ChatArea({
     }
   };
 
+  const [searchModal, setSearchModal] = useState(false);
+  const [searchText, setSearchText] = useState<string>();
+
+  const searchModalHandler = () => {
+    setFoundMessages([]);
+    setSearchText("");
+    setSearchModal(true);
+  };
+
+  const searchHandler = ({
+    word,
+    room,
+  }: {
+    word: string;
+    room: Room | string;
+  }) => {
+    if (typeof room === "object") {
+      socket?.emit("messages:search", { word, room: room._id });
+    } else {
+      socket?.emit("messages:search", { word, room: room });
+    }
+  };
+
   const handleClose = () => {
     setOpen(false);
     setSelectedRecipient(null);
@@ -562,6 +586,7 @@ function ChatArea({
   };
 
   const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [foundMessages, setFoundMessages] = useState<Message[]>([]);
 
   const handleEditRoom = (updatedRoom: {
     name: string;
@@ -585,6 +610,10 @@ function ChatArea({
 
   socket?.on("rooms:removeUserResponse", (updatedRoom: Room) => {
     setSelectedRoom(updatedRoom);
+  });
+
+  socket?.on("messages:searchResults", (foundMessages: Message[]) => {
+    setFoundMessages(foundMessages);
   });
 
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -709,47 +738,72 @@ function ChatArea({
           padding: "0 30px",
         }}
       >
-        <h2
-          style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-          onClick={() => profileHandler(recipient, room)}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            justifyContent: "space-between",
+            width: "100%",
+          }}
         >
-          {recipient?.profile ? (
-            <Avatar
-              src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                recipient.profile
-              }`}
-              alt={recipient.username}
-              className="avatar"
-            />
-          ) : (
-            "Chat Room: "
-          )}{" "}
-          <span style={{ marginLeft: "15px" }}>
-            {typeof shownRoomName === "string"
-              ? shownRoomName
-              : typeof shownRoomName === "object"
-              ? // @ts-ignore
-                shownRoomName.name
-              : "No room joined"}
-          </span>
-          {Object.keys(typingUsers).map((userId) => {
-            if (typingUsers[userId] && userId !== sender?._id) {
-              return (
-                <span
-                  key={userId}
-                  style={{
-                    marginLeft: "5px",
-                    fontWeight: "normal",
-                    fontSize: "1rem",
-                  }}
-                >
-                  (typing...)
-                </span>
-              );
-            }
-            return null;
-          })}
-        </h2>
+          <h2
+            onClick={() => profileHandler(recipient, room)}
+            style={{ display: "flex", alignItems: "center" }}
+          >
+            {recipient?.profile ? (
+              <Avatar
+                src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
+                  recipient.profile
+                }`}
+                alt={recipient.username}
+                className="avatar"
+              />
+            ) : (
+              
+              "Chat Room: "
+            )}{" "}
+            <span style={{ marginLeft: "15px" }}>
+              {typeof shownRoomName === "string"
+                ? shownRoomName
+                : typeof shownRoomName === "object"
+                ? // @ts-ignore
+                  shownRoomName.name
+                : "No room joined"}
+            </span>
+            {Object.keys(typingUsers).map((userId) => {
+              if (typingUsers[userId] && userId !== sender?._id) {
+                return (
+                  <span
+                    key={userId}
+                    style={{
+                      marginLeft: "5px",
+                      fontWeight: "normal",
+                      fontSize: "1rem",
+                    }}
+                  >
+                    (typing...)
+                  </span>
+                );
+              }
+              return null;
+            })}
+          </h2>
+          <div
+            style={{
+              background: "#cccccc",
+              padding: 10,
+              borderRadius: "50%",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onClick={() => searchModalHandler()}
+          >
+            
+            {shownRoomName === "No room joined" ? "" : <IoMdSearch size={25} />}
+          </div>
+        </div>
 
         {typeof shownRoomName === "object" ? (
           <div
@@ -794,6 +848,7 @@ function ChatArea({
 
         {selectedRecipient && (
           <ProfileModal
+            // @ts-ignore
             recipient={selectedRecipient as Required<Recipient>} // Type casting
             open={open}
             handleClose={handleClose}
@@ -854,7 +909,7 @@ function ChatArea({
           <video id="localScreenVideo" autoPlay playsInline></video>
           <video id="remoteCameraVideo" autoPlay playsInline></video>
           <video id="remoteScreenVideo" autoPlay playsInline></video> */}
-          {messages.map((msg: /*Message*/ any) => {
+          {messages.map((msg: Message) => {
             // @ts-ignore
             const isAdminOrOwner = room.participants?.some(
               (participant: any) =>
@@ -886,7 +941,7 @@ function ChatArea({
                       gap: "10px",
                       cursor: "pointer",
                     }}
-                    onClick={() => profileHandler(msg.sender, room)}
+                    onClick={() => profileHandler(msg?.sender, room)}
                   >
                     <Avatar
                       src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
@@ -976,7 +1031,9 @@ function ChatArea({
                     >
                       <img
                         src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                          msg.storyId.thumbnail
+                          typeof msg.storyId === "object"
+                            ? msg.storyId.thumbnail
+                            : ""
                         }`}
                         alt="Story preview"
                         style={{
@@ -985,7 +1042,12 @@ function ChatArea({
                           cursor: "pointer",
                         }}
                         onClick={() =>
-                          window.open(msg.storyId.hyperLink, "_blank")
+                          window.open(
+                            typeof msg.storyId === "object"
+                              ? msg.storyId.hyperLink
+                              : "",
+                            "_blank"
+                          )
                         }
                       />
                       <div>
@@ -993,7 +1055,9 @@ function ChatArea({
                           Story Preview
                         </p>
                         <p style={{ margin: "0", fontSize: "0.9rem" }}>
-                          {msg.storyId.description?.substring(0, 50) + "..."}
+                          {typeof msg.storyId === "object"
+                            ? msg.storyId.description?.substring(0, 50) + "..."
+                            : ""}
                         </p>
                       </div>
                     </div>
@@ -1009,10 +1073,10 @@ function ChatArea({
                     }}
                   >
                     <span>
-                      {msg.isSending || !msg.timestamp ? (
+                      {msg.isSending || !msg.createdAt ? (
                         <CiClock2 size={10} />
-                      ) : msg.timestamp ? (
-                        new Date(msg.timestamp).toLocaleTimeString()
+                      ) : msg.createdAt ? (
+                        new Date(msg.createdAt).toLocaleTimeString()
                       ) : (
                         "Unknown Time"
                       )}
@@ -1179,7 +1243,11 @@ function ChatArea({
                         msg?.sender?._id === sender?._id ? "right" : "left",
                     }}
                   >
-                    {/\.(jpg|jpeg|png|gif)$/i.test(msg.fileUrl) ? (
+                    {/\.(jpg|jpeg|png|gif)$/i.test(
+                      typeof msg.fileUrl === "object"
+                        ? msg.fileUrl.filePath
+                        : ""
+                    ) ? (
                       <div>
                         <img
                           src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
@@ -1214,7 +1282,11 @@ function ChatArea({
                           />
                         </Dialog>
                       </div>
-                    ) : /\.(mp4|mov|avi|wmv)$/i.test(msg.fileUrl) ? (
+                    ) : /\.(mp4|mov|avi|wmv)$/i.test(
+                        typeof msg.fileUrl === "object"
+                          ? msg.fileUrl.filePath
+                          : ""
+                      ) ? (
                       <video
                         src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
                           msg.fileUrl
@@ -1224,7 +1296,11 @@ function ChatArea({
                       >
                         Your browser does not support the video tag.
                       </video>
-                    ) : /\.(zip|rar)$/i.test(msg.fileUrl) ? (
+                    ) : /\.(zip|rar)$/i.test(
+                        typeof msg.fileUrl === "object"
+                          ? msg.fileUrl.filePath
+                          : ""
+                      ) ? (
                       <div
                         style={{
                           padding: "20px",
@@ -1235,7 +1311,12 @@ function ChatArea({
                       >
                         <p style={{ margin: 0 }}>
                           <strong>Compressed File:</strong>{" "}
-                          {msg.fileUrl.split("/").pop()?.split("*")[0]}
+                          {typeof msg.fileUrl === "object"
+                            ? msg.fileUrl.filePath
+                                .split("/")
+                                .pop()
+                                ?.split("*")[0]
+                            : ""}
                         </p>
                         <a
                           href={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
@@ -1255,7 +1336,11 @@ function ChatArea({
                           Download
                         </a>
                       </div>
-                    ) : /\.(404)$/i.test(msg.fileUrl) ? (
+                    ) : /\.(404)$/i.test(
+                        typeof msg.fileUrl === "object"
+                          ? msg.fileUrl.filePath
+                          : ""
+                      ) ? (
                       <p>File not found</p>
                     ) : (
                       <p>Unsupported file format</p>
@@ -1475,6 +1560,15 @@ function ChatArea({
         handlePromoteUser={handlePromoteUser}
         senderId={sender?._id ?? ""}
         profileHandler={profileHandler}
+      />
+
+      <SearchModal
+        open={searchModal}
+        onClose={() => setSearchModal(false)}
+        onSearch={searchHandler}
+        room={room}
+        foundMessages={foundMessages}
+        sender={sender}
       />
     </div>
   );

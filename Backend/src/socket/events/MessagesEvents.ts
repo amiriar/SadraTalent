@@ -5,12 +5,14 @@ import mongoose from "mongoose";
 import { Socket, Server } from "socket.io";
 import path from "path";
 import fs from "fs";
+import { Room } from "@/api/admin/rooms/roomsModel";
 
 export const messagesEvents = (
   socket: Socket,
   io: Server,
   userSocketId: string,
-  userId: string
+  userId: string,
+  onlineUsers: Map<string, any> = new Map()
 ) => {
   socket.on("messages:seenMessage", async ({ messages, room }) => {
     await MessageModel.updateMany(
@@ -113,25 +115,22 @@ export const messagesEvents = (
     try {
       const { tempId, content, ...rest } = messageData;
 
-      // Encrypt the message content before saving
       const encryptedContent = encrypt(content);
 
-      // Save the encrypted message to the database
       const newMessage = await MessageModel.create({
         ...rest,
         content: encryptedContent,
       });
 
-      // Prepare message to send, decrypting for the frontend
       const sender = await UserModel.findById(
         newMessage.sender,
         "username profile"
       );
+
       const recipient = await UserModel.findById(
         newMessage.receiver,
         "username profile"
       );
-      const decryptedContent = decrypt(newMessage.content);
 
       const replyToMessage = newMessage.replyTo
         ? await MessageModel.findById(newMessage.replyTo).populate({
@@ -143,7 +142,7 @@ export const messagesEvents = (
       const messageToSend = {
         _id: newMessage._id,
         tempId,
-        content: decryptedContent,
+        content: content,
         room: newMessage.room,
         status: newMessage.status,
         isSending: false,
@@ -177,7 +176,7 @@ export const messagesEvents = (
         updatedAt: newMessage.updateAt,
       };
 
-      io.emit("messages:message", messageToSend);
+      io.emit("messages:sendMessage", messageToSend);
     } catch (error) {
       console.error("Error sending message:", { messgae: error });
     }
@@ -201,7 +200,7 @@ export const messagesEvents = (
         delete message?.recipient?.phoneNumber;
       }
 
-      if (message.timestamp) delete message.timestamp;
+      if (message.createdAt) delete message.createdAt;
 
       delete message._id;
 
@@ -238,14 +237,16 @@ export const messagesEvents = (
       if (message.sender) {
         delete message.sender.profile;
         delete message.sender.username;
-        delete message.sender.phoneNumber;
+        delete message.sender.phone;
       }
       if (message._id) delete message._id;
-      if (message.timestamp) delete message.timestamp;
+      if (message.createdAt) delete message.createdAt;
 
       message.recipient = receiverId;
 
       message.room = receiverId + "-" + receiverId;
+
+      message.status = "seen";
 
       const savedMessage = await MessageModel.create(message);
 
@@ -309,10 +310,9 @@ export const messagesEvents = (
 
   socket.on(
     "messages:getHistory",
-    async ({ name, page = 0, pageSize = 25 }) => {
+    async ({ roomName, page = 0, pageSize = 25 }) => {
       try {
-        // const userId = socket.handshake.query.userId;
-        const ids = !name?._id ? name?.split("-") : name?._id;
+        const ids = !roomName?._id ? roomName?.split("-") : roomName?._id;
 
         const isPrivateChat =
           ids?.length === 2 &&
@@ -330,13 +330,13 @@ export const messagesEvents = (
             $or: [
               { sender: senderObjectId, recipient: recipientObjectId },
               { sender: recipientObjectId, recipient: senderObjectId },
-              { room: isSaveMessage && name },
+              { room: isSaveMessage && roomName },
             ],
             isDeleted: false,
             deletedBy: { $not: { $elemMatch: { $eq: userId } } },
           })
             .populate("sender", "username profile phoneNumber")
-            .populate("recipient", "username profile phoneNumber")
+            .populate("receiver", "username profile phoneNumber")
             .populate({
               path: "replyTo",
               populate: {
@@ -349,18 +349,18 @@ export const messagesEvents = (
               select:
                 "description file thumbnail hyperLink user isDeleted expireAt seenBy likes isAccepted",
             })
-            .sort({ timestamp: -1 })
+            .sort({ createdAt: -1 })
             .skip(page * pageSize)
             .limit(pageSize)
             .lean();
         } else {
           history = await MessageModel.find({
-            room: name,
+            room: roomName,
             isDeleted: false,
             deletedBy: { $not: { $elemMatch: { $eq: userId } } },
           })
             .populate("sender", "username profile phoneNumber")
-            .populate("recipient", "username profile phoneNumber")
+            .populate("receiver", "username profile phoneNumber")
             .populate({
               path: "replyTo",
               populate: {
@@ -373,13 +373,12 @@ export const messagesEvents = (
               select:
                 "description file thumbnail hyperLink user isDeleted expireAt seenBy likes isAccepted",
             })
-            .sort({ timestamp: -1 })
+            .sort({ createdAt: -1 })
             .skip(page * pageSize)
             .limit(pageSize)
             .lean();
         }
 
-        // Decrypt message content for each history item
         const decryptedHistory = history.map((message) => {
           const decryptedContent = decrypt(message.content);
           let replyToContent = null;
@@ -393,7 +392,6 @@ export const messagesEvents = (
                 : decryptedReplyContent;
           }
 
-          // Check if file exists for fileUrl and voiceUrl
           if (message.fileUrl) {
             const filePath = path.join(
               __dirname,
@@ -439,4 +437,78 @@ export const messagesEvents = (
       }
     }
   );
+
+  socket.on("messages:search", async ({ word, room }) => {
+    try {
+      if (!word || !room) {
+        socket.emit("messages:searchResults", []);
+        return;
+      }
+  
+      // Removed pagination logic: pageSize, page, maxCount, hasMoreMessages
+      // const pageSize = 50;  // You can uncomment this later if you want to add pagination
+      // let page = 0;  // You can uncomment this later if you want to add pagination
+      // let foundMessages = [];  // This will store all the found messages
+  
+      const lowerCaseWord = word.toLowerCase();
+  
+      // Removed pagination and maxCount
+      const messages = await MessageModel.find({
+        room,
+        isDeleted: false,
+        deletedBy: { $not: { $elemMatch: { $eq: userId } } },
+      })
+        .sort({ createdAt: -1 })
+        .populate("sender", "username profile phone")
+        .populate("receiver", "username profile phone")
+        .populate({
+          path: "replyTo",
+          populate: {
+            path: "sender",
+            select: "username profile",
+          },
+        })
+        .lean();
+  
+      // Check if there are no messages
+      if (messages.length === 0) {
+        socket.emit("messages:searchResults", []);
+        return;
+      }
+  
+      // Find and push matching messages
+      const foundMessages = [];
+  
+      for (const message of messages) {
+        const decryptedContent = decrypt(message.content);
+  
+        let decryptedReplyContent = null;
+        if (message.replyTo?.content) {
+          decryptedReplyContent = decrypt(message.replyTo.content);
+        }
+  
+        // If the message or its reply contains the word, add it to the results
+        if (
+          decryptedContent.toLowerCase().includes(lowerCaseWord) ||
+          (decryptedReplyContent &&
+            decryptedReplyContent.toLowerCase().includes(lowerCaseWord))
+        ) {
+          foundMessages.push({
+            ...message,
+            content: decryptedContent,
+            replyTo: message.replyTo
+              ? { ...message.replyTo, content: decryptedReplyContent }
+              : null,
+          });
+        }
+      }
+  
+      // Emit the found messages
+      socket.emit("messages:searchResults", foundMessages.reverse());
+    } catch (error) {
+      console.error("Error searching messages:", error);
+      socket.emit("messages:searchResults", []);
+    }
+  });
+  
 };
