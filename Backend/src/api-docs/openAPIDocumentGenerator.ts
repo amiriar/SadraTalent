@@ -13,6 +13,7 @@ import { filesRegistery } from "@/api/admin/files/filesRouter";
 import { adminStoriesRegistery } from "@/api/admin/stories/storiesRouter";
 import { storiesRegistery } from "@/api/stories/storiesRouter";
 import { dashboardRegistery } from "@/api/Dashboard/DashboardRouter";
+import { socketRegistry } from "./websocketEvents";
 
 export function generateOpenAPIDocument() {
   const registry = new OpenAPIRegistry([
@@ -26,6 +27,7 @@ export function generateOpenAPIDocument() {
     uploadsRegistery,
     filesRegistery,
     dashboardRegistery,
+    socketRegistry,
   ]);
 
   // Define the BearerAuth scheme in the registry

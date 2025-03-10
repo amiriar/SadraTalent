@@ -8,6 +8,13 @@ import path from "path";
 import ffmpeg from "fluent-ffmpeg";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
+import ffmpegStatic from "ffmpeg-static";
+
+if (!ffmpegStatic) {
+  throw new Error("FFmpeg binary not found. Please install ffmpeg-static.");
+}
+
+ffmpeg.setFfmpegPath(ffmpegStatic);
 
 export class UploadsService {
   #uploadsRepository: UploadsRepository;

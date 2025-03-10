@@ -13,11 +13,9 @@ export interface IMessage extends Document {
   receiver: IUserInfo;
   content: string;
   room: string;
-  // timestamp: Date;
-  // date: string;
   status: "sent" | "delivered" | "seen";
-  voiceUrl?: IUpload | string;
-  fileUrl?: IUpload | string;
+  voice?: IUpload | string;
+  file?: IUpload | string;
   isEdited: boolean;
   isPinned: boolean;
   isDeleted: boolean;
@@ -43,8 +41,8 @@ const MessageSchema = new Schema<IMessage>(
       enum: ["sent", "delivered", "seen", "detail"],
       default: "sent",
     },
-    voiceUrl: { type: Schema.Types.ObjectId, ref: "Upload", required: false },
-    fileUrl: { type: Schema.Types.ObjectId, ref: "Upload", required: false },
+    voice: { type: Schema.Types.ObjectId, ref: "Upload", required: false },
+    file: { type: Schema.Types.ObjectId, ref: "Upload", required: false },
     isPinned: { type: Boolean, default: false },
     isEdited: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },

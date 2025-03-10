@@ -11,6 +11,7 @@ import {
 import { TiTick } from "react-icons/ti";
 // import { IStory } from "../modules/types/types";
 import axios from "axios";
+import { IUpload } from "../modules/types/types";
 
 interface StoryModalProps {
   open: boolean;
@@ -18,7 +19,7 @@ interface StoryModalProps {
   addStoryHandler: any;
   // currentStory: IStory[] | null;
   // setCurrentStory: any;
-  senderProfile: string | undefined;
+  senderProfile: string | undefined | IUpload;
 }
 
 const CreateStoryModal: React.FC<StoryModalProps> = ({
@@ -33,9 +34,9 @@ const CreateStoryModal: React.FC<StoryModalProps> = ({
   const [newFile, setNewFile] = useState<File | null>(null);
   const [hyperLink, setHyperLink] = useState<string | null>("");
   const [newFilePath, setNewFilePath] = useState<string>("");
-  const [newThumbnailPath, setNewThumbnailPath] = useState<string | undefined>(
-    ""
-  );
+  const [newThumbnailPath, setNewThumbnailPath] = useState<
+    string | undefined | IUpload
+  >("");
 
   const [storyUploadProgress, setStoryUploadProgress] = useState<number>(0);
   // const [thumbnailUploadProgress, setThumbnailUploadProgress] =
@@ -148,7 +149,7 @@ const CreateStoryModal: React.FC<StoryModalProps> = ({
           sx={{ marginTop: 1 }}
         />
 
-        <div style={{marginTop:"10px"}}>
+        <div style={{ marginTop: "10px" }}>
           <label htmlFor="hl">Additional Link: </label>
           <input
             type="text"

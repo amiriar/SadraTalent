@@ -2,50 +2,49 @@ import mongoose, { ObjectId, Schema } from "mongoose";
 
 export interface Message {
   _id?: string;
-  tempId: string;
+  tempId?: string;
   sender: Sender;
   receiver: Recipient;
   content: string;
   room: string;
   publicName: string;
   createdAt?: Date | null;
-  voiceUrl?: string | IUpload;
-  fileUrl?: string | IUpload;
+  updatedAt?: Date | null;
+  voice?: string | IUpload;
+  file?: string | IUpload;
   status: string;
   isSending: boolean;
   isEdited: boolean;
   isForwarded: boolean;
+  isDeleted: boolean;
   isPinned: boolean;
-  replyTo: ReplyTo;
+  replyTo: ReplyTo | null;
   storyId?: string | IStory;
+  deletedBy: Sender[];
 }
 
 export interface ReplyTo {
   _id: mongoose.Types.ObjectId | string;
   content?: string;
   sender: Sender;
-  voiceUrl?: string | IUpload;
-  fileUrl?: string | IUpload;
+  voice?: string | IUpload;
+  file?: string | IUpload;
   timestamp: Date;
   $__?: any;
 }
 
-export interface Sender {
+export interface Sender extends IUser {
   _id: string;
-  username?: string;
   phone?: string;
-  profile?: string | IUpload;
   stories?: string[];
 }
 
-export interface Recipient {
+export interface Recipient extends IUser {
   _id: string;
-  username?: string;
   phone?: string;
-  profile?: string | IUpload;
-  customStatus?: string;
   stories?: string[];
   lastSeen?: Date;
+  lastMessage?: any;
 }
 
 export interface Room {
@@ -62,6 +61,7 @@ export interface Room {
   createdAt: Date;
   isPublic: boolean;
   profile: string | IUpload;
+  lastMessage?: any;
 }
 
 export interface IUpload extends Document {
@@ -98,5 +98,6 @@ export interface IUser {
   username: string;
   profile: string;
   lastSeen?: Date;
-  customStatus: string;
+  customStatus?: string;
+  role: string;
 }

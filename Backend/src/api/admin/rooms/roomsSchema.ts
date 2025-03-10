@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
+import { Message } from "../messages/messagesModel";
 
 export interface IRoom extends Document {
   profile?: Schema.Types.ObjectId;
@@ -13,6 +14,8 @@ export interface IRoom extends Document {
   isGroup: boolean;
   isPublic: boolean;
   isDeleted: boolean;
+  // lastMessage?: Message | null;
+  lastMessage: any;
 }
 
 interface ParticipantUser {
@@ -33,7 +36,7 @@ const ParticipantSchema = new Schema({
 
 const RoomSchema = new Schema<IRoom>(
   {
-    profile: { type: Schema.Types.ObjectId, ref:"Upload" },
+    profile: { type: Schema.Types.ObjectId, ref: "Upload" },
     name: { type: String, required: true, maxlength: 20 },
     bio: { type: String, maxlength: 200 },
     pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],

@@ -149,117 +149,234 @@ const Home: React.FC = () => {
     draft ? setMessage(draft) : setMessage("");
   }, [room]);
 
+  // useEffect(() => {
+  //   if (room) {
+  //     const formattedRoom = recipient?._id
+  //       ? `${sender?._id}-${recipient?._id}`
+  //       : typeof room === "object"
+  //       ? room._id
+  //       : "";
+
+  //     socket?.emit("messages:getHistory", { roomName: formattedRoom });
+  //     setMessages([]);
+
+  //     socket?.on("messages:sendHistory", (messageData: Message[]) => {
+  //       setMessages((prevMessages) => [...messageData, ...prevMessages]);
+  //     });
+
+  //     socket?.on(
+  //       "messages:deleteMessageResponse",
+  //       ({
+  //         success,
+  //         messageId,
+  //         error,
+  //         deletedBy,
+  //         deletedByEveryone,
+  //       }: DeleteMessageResponse) => {
+  //         if (success) {
+  //           setMessages((prevMessages) =>
+  //             prevMessages.filter((msg) => {
+  //               const isCurrentMessage = msg._id === messageId;
+  //               const isDeletedForEveryone = deletedByEveryone;
+  //               const isDeletedForSender =
+  //                 deletedBy && deletedBy.includes(sender?._id ?? "");
+
+  //               if (isDeletedForEveryone && isCurrentMessage) {
+  //                 return false;
+  //               }
+
+  //               return !isCurrentMessage || !isDeletedForSender;
+  //             })
+  //           );
+  //         } else {
+  //           console.error("Failed to delete message:", error);
+  //         }
+  //       }
+  //     );
+
+  //     let observer: IntersectionObserver | null = null;
+  //     const currentChatEnd = chatEndRef.current;
+
+  //     if (currentChatEnd) {
+  //       observer = new IntersectionObserver(
+  //         (entries) => {
+  //           const isAtBottom = entries[0].isIntersecting;
+
+  //           if (isAtBottom && messages.length > 0) {
+  //             // Emit the 'seen' event for all messages that are not 'seen'
+  //             const unseenMessages = messages.filter(
+  //               (message) => message.status !== "seen"
+  //             );
+
+  //             if (unseenMessages.length > 0) {
+  //               socket?.emit("messages:seenMessage", {
+  //                 messages: unseenMessages.map((msg) => msg._id),
+  //                 room,
+  //                 userId: sender?._id, // Current user marking messages as seen
+  //               });
+  //             }
+  //           }
+  //         },
+  //         { threshold: 1.0 } // Adjust threshold based on when the element is considered in view
+  //       );
+
+  //       observer.observe(currentChatEnd);
+  //     }
+
+  //     socket?.on("messages:sendMessage", handleIncomingMessage);
+
+  //     return () => {
+  //       socket?.off("messages:deleteMessageResponse");
+  //       socket?.off("messages:sendHistory");
+  //       socket?.off("rooms:newRoomResponse");
+  //       socket?.off("messages:message");
+  //       socket?.off("messages:sendMessage", handleIncomingMessage);
+
+  //       if (observer && currentChatEnd) {
+  //         observer.unobserve(currentChatEnd);
+  //       }
+  //     };
+  //   }
+  // }, [room, socket]);
+
+  // const handleIncomingMessage = (messageData: Message) => {
+  //   setMessages((prevMessages) => {
+  //     const currentRoomId = typeof room === "string" ? room : room?._id;
+  //     const messageRoomId = messageData.room;
+
+  //     if (messageRoomId !== currentRoomId) {
+  //       return prevMessages;
+  //     }
+
+  //     const updatedMessages = prevMessages.map((msg) =>
+  //       msg.tempId === messageData.tempId ? messageData : msg
+  //     );
+
+  //     if (!updatedMessages.some((msg) => msg._id === messageData._id)) {
+  //       updatedMessages.push(messageData);
+  //     }
+
+  //     if (recipient && sender?._id !== messageData?.receiver?._id) {
+  //       checkPageStatus(messageData.content, messageData.sender ?? "");
+  //     }
+  //     return updatedMessages;
+  //   });
+  // };
+
   useEffect(() => {
-    if (room) {
-      const formattedRoom = recipient?._id
-        ? `${sender?._id}-${recipient?._id}`
-        : typeof room === "object"
-        ? room._id
-        : "";
+    if (!room) return;
 
-      socket?.emit("messages:getHistory", { roomName: formattedRoom });
-      setMessages([]);
+    const formattedRoom = recipient?._id
+      ? `${sender?._id}-${recipient?._id}`
+      : typeof room === "object"
+      ? room._id
+      : "";
 
-      socket?.on("messages:sendHistory", (messageData: Message[]) => {
-        setMessages((prevMessages) => [...messageData, ...prevMessages]);
-      });
+    socket?.emit("messages:getHistory", { roomName: formattedRoom });
+    setMessages([]);
 
-      socket?.on(
-        "messages:deleteMessageResponse",
-        ({
-          success,
-          messageId,
-          error,
-          deletedBy,
-          deletedByEveryone,
-        }: DeleteMessageResponse) => {
-          if (success) {
-            setMessages((prevMessages) =>
-              prevMessages.filter((msg) => {
-                const isCurrentMessage = msg._id === messageId;
-                const isDeletedForEveryone = deletedByEveryone;
-                const isDeletedForSender =
-                  deletedBy && deletedBy.includes(sender?._id ?? "");
+    socket?.on("messages:sendHistory", (messageData: Message[]) => {
+      setMessages((prevMessages) => [...messageData, ...prevMessages]);
+    });
 
-                if (isDeletedForEveryone && isCurrentMessage) {
-                  return false;
-                }
+    socket?.on(
+      "messages:deleteMessageResponse",
+      ({
+        success,
+        messageId,
+        error,
+        deletedBy,
+        deletedByEveryone,
+      }: DeleteMessageResponse) => {
+        if (success) {
+          setMessages((prevMessages) =>
+            prevMessages.filter((msg) => {
+              const isCurrentMessage = msg._id === messageId;
+              const isDeletedForEveryone = deletedByEveryone;
+              const isDeletedForSender =
+                deletedBy && deletedBy.includes(sender?._id ?? "");
 
-                return !isCurrentMessage || !isDeletedForSender;
-              })
-            );
-          } else {
-            console.error("Failed to delete message:", error);
-          }
-        }
-      );
-
-      // Declare observer outside of the 'if' block so it can be referenced in both observe and unobserve
-      let observer: IntersectionObserver | null = null;
-      const currentChatEnd = chatEndRef.current;
-
-      if (currentChatEnd) {
-        observer = new IntersectionObserver(
-          (entries) => {
-            const isAtBottom = entries[0].isIntersecting;
-
-            if (isAtBottom && messages.length > 0) {
-              // Emit the 'seen' event for all messages that are not 'seen'
-              const unseenMessages = messages.filter(
-                (message) => message.status !== "seen"
-              );
-
-              if (unseenMessages.length > 0) {
-                socket?.emit("messages:seenMessage", {
-                  messages: unseenMessages.map((msg) => msg._id),
-                  room,
-                  userId: sender?._id, // Current user marking messages as seen
-                });
+              if (isDeletedForEveryone && isCurrentMessage) {
+                return false;
               }
-            }
-          },
-          { threshold: 1.0 } // Adjust threshold based on when the element is considered in view
+
+              return !isCurrentMessage || !isDeletedForSender;
+            })
+          );
+        } else {
+          console.error("Failed to delete message:", error);
+        }
+      }
+    );
+    
+    
+    const handleIncomingMessage = (messageData: Message) => {
+      setMessages((prevMessages) => {
+        const currentRoomId = typeof room === "string" ? room : room?._id;
+        const messageRoomId = messageData.room;
+
+        if (messageRoomId !== currentRoomId) {
+          return prevMessages;
+        }
+
+        const updatedMessages = prevMessages.map((msg) =>
+          msg.tempId === messageData.tempId ? messageData : msg
         );
 
-        observer.observe(currentChatEnd);
-      }
-
-      return () => {
-        socket?.off("messages:deleteMessageResponse");
-        socket?.off("messages:sendHistory");
-        socket?.off("rooms:newRoomResponse");
-        socket?.off("messages:message");
-
-        if (observer && currentChatEnd) {
-          observer.unobserve(currentChatEnd);
+        if (!updatedMessages.some((msg) => msg._id === messageData._id)) {
+          updatedMessages.push(messageData);
         }
-      };
-    }
-  }, [room, socket]);
 
-  socket?.on("messages:sendMessage", (messageData: Message) => {
-    setMessages((prevMessages) => {
-      const currentRoomId = typeof room === "string" ? room : room?._id;
-      const messageRoomId = messageData.room;
+        if (recipient && sender?._id !== messageData?.receiver?._id) {
+          checkPageStatus(messageData.content, messageData.sender ?? "");
+        }
 
-      if (messageRoomId !== currentRoomId) {
-        return prevMessages;
-      }
+        return updatedMessages;
+      });
+    };
 
-      const updatedMessages = prevMessages.map((msg) =>
-        msg.tempId === messageData.tempId ? messageData : msg
+    socket?.on("messages:sendMessage", handleIncomingMessage);
+
+    let observer: IntersectionObserver | null = null;
+    const currentChatEnd = chatEndRef.current;
+
+    if (currentChatEnd) {
+      observer = new IntersectionObserver(
+        (entries) => {
+          const isAtBottom = entries[0].isIntersecting;
+
+          if (isAtBottom && messages.length > 0) {
+            const unseenMessages = messages.filter(
+              (message) => message.status !== "seen"
+            );
+
+            if (unseenMessages.length > 0) {
+              socket?.emit("messages:seenMessage", {
+                messages: unseenMessages.map((msg) => msg._id),
+                room,
+                userId: sender?._id,
+              });
+            }
+          }
+        },
+        { threshold: 1.0 }
       );
 
-      if (!updatedMessages.some((msg) => msg._id === messageData._id)) {
-        updatedMessages.push(messageData);
-      }
+      observer.observe(currentChatEnd);
+    }
 
-      if (recipient && sender?._id !== messageData?.receiver?._id) {
-        checkPageStatus(messageData.content, messageData.sender ?? "");
+    return () => {
+      socket?.off("messages:deleteMessageResponse");
+      socket?.off("messages:sendHistory");
+      socket?.off("rooms:newRoomResponse");
+      socket?.off("messages:message");
+      socket?.off("messages:sendMessage", handleIncomingMessage); // This works fine
+
+      if (observer && currentChatEnd) {
+        observer.unobserve(currentChatEnd);
       }
-      return updatedMessages;
-    });
-  });
+    };
+  }, [room, socket, sender, recipient]);
 
   socket?.on("messages:newRoomResponse", (roomData: Room[]) => {
     const userRooms = roomData.filter((room) =>
@@ -545,15 +662,19 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {rooms.map((room: Room) => (
-          <button
-            key={room._id}
-            onClick={() => joinRoom(room)}
-            className="room-btn"
-          >
-            {room.name}
-          </button>
-        ))}
+        {rooms?.map((room: Room) => {
+          return (
+            <button
+              key={room._id}
+              onClick={() => joinRoom(room)}
+              className="room-btn"
+            >
+              {room.name}
+              <br />
+              {room?.lastMessage?.content}
+            </button>
+          );
+        })}
 
         <button onClick={addRoomHandler} className="add-room-btn">
           <FaPlus />
@@ -712,7 +833,6 @@ const Home: React.FC = () => {
         publicName={publicName}
         setRooms={setRooms}
         // @ts-ignore
-
         setRoom={setRoom}
         pinMessage={pinMessage}
         setPinMessage={setPinMessage}
@@ -727,7 +847,6 @@ const Home: React.FC = () => {
       <CreateStoryModal
         open={isCretaeStoryModalOpen}
         onClose={storyHandler}
-
         currentStory={currentStory}
         setCurrentStory={setCurrentStory}
         addStoryHandler={addStoryHandler}

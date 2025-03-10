@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Modal, Box, TextField, InputAdornment, Divider } from "@mui/material";
 import { IoMdSearch } from "react-icons/io";
 import { Message, Room, Sender } from "./types/types";
@@ -76,7 +76,7 @@ const SearchModal = ({
               paddingBottom: "10px", // Add padding to the bottom for better UX
             }}
           >
-            {foundMessages.map((message: Message, index: number) => {
+            {foundMessages.map((message: Message) => {
               return (
                 <div key={message._id}>
                   <h3>
@@ -95,10 +95,13 @@ const SearchModal = ({
                   <p>Content: {message.content}</p>
                   <p>
                     Sent in:{" "}
-                    {formatDistanceToNow(new Date(message.createdAt), {
-                      addSuffix: true,
-                      includeSeconds: true,
-                    })}
+                    {formatDistanceToNow(
+                      new Date(message.createdAt ? message.createdAt : ""),
+                      {
+                        addSuffix: true,
+                        includeSeconds: true,
+                      }
+                    )}
                   </p>
                   <Divider />
                 </div>

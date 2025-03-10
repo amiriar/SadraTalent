@@ -1,3 +1,4 @@
+import { Roles, Status } from "@/common/utils/enum";
 import mongoose, { Schema, model, Document, Types } from "mongoose";
 
 export interface IUser extends Document {
@@ -5,7 +6,7 @@ export interface IUser extends Document {
   username: string;
   firstname: string;
   lastname: string;
-  role?: string;
+  role?: Roles;
   lastDateIn?: string;
   email: string;
   password: string;
@@ -14,7 +15,7 @@ export interface IUser extends Document {
   bio?: string;
   otp?: string | null;
   otpExpire?: Date | null;
-  status?: string;
+  status?: Status;
   lastSeen?: Date;
   stories: Types.ObjectId | null;
   refreshToken?: string | null;
@@ -27,7 +28,7 @@ const UserSchema = new Schema<IUser>(
     username: { type: String, required: false },
     firstname: { type: String, required: false },
     lastname: { type: String, required: false },
-    role: { type: String, default: "USER" },
+    role: { type: String, enum: Object.values(Roles), default: Roles.User },
     lastDateIn: { type: String, required: false },
     email: { type: String, required: false },
     password: { type: String, required: false },
@@ -36,7 +37,11 @@ const UserSchema = new Schema<IUser>(
     bio: { type: String, required: false },
     otp: { type: String, required: false },
     otpExpire: { type: Date, required: false },
-    status: { type: String, default: "offline" },
+    status: {
+      type: String,
+      enum: Object.values(Status),
+      default: Status.offline,
+    },
     customStatus: { type: String, default: "", maxlength: 15 },
     lastSeen: { type: Date },
     refreshToken: { type: String },

@@ -1,5 +1,7 @@
+import MessageModel from "@/api/admin/messages/messagesSchema";
 import RoomModel from "@/api/admin/rooms/roomsSchema";
 import UserModel from "@/api/admin/user/userSchema";
+import { decrypt } from "@/common/helper/Helper";
 import { DefaultRoomNames } from "@/enum/PublicRooms";
 import { Socket, Server } from "socket.io";
 
@@ -10,125 +12,11 @@ export const userEvents = (
   userId: string,
   onlineUsers: Map<string, any> = new Map()
 ) => {
-  // socket.on("users:login", async () => {
-  //   try {
-  //     const user = await UserModel.findById(userId).select("_id username");
-  //     if (!user) {
-  //       return socket.emit("error", { message: "User not found" });
-  //     }
-
-  //     console.log(`User ${user.username} logged in`);
-
-  //     const publicRooms = await RoomModel.find({
-  //       name: {
-  //         $in: [DefaultRoomNames.General, DefaultRoomNames.Announcements],
-  //       },
-  //       isDeleted: false,
-  //     })
-  //       .select("_id name")
-  //       .lean();
-
-  //     for (const room of publicRooms) {
-  //       socket.join(room._id.toString());
-
-  //       const isUserAlreadyInRoom = await RoomModel.findOne({
-  //         _id: room._id,
-  //         "participants.user": user._id,
-  //         isDeleted: false,
-  //       });
-
-  //       if (!isUserAlreadyInRoom) {
-  //         await RoomModel.updateOne(
-  //           { _id: room._id, isDeleted: false },
-  //           {
-  //             $addToSet: { participants: { user: user._id, role: "member" } },
-  //           }
-  //         ).lean();
-  //       }
-
-  //       console.log(`User ${user.username} joined ${room.name}`);
-  //     }
-
-  //     const userRooms = await RoomModel.find({
-  //       $or: [
-  //         { isPublic: true },
-  //         { "participants.user": user._id },
-  //         { isDeleted: false },
-  //       ],
-  //     })
-  //       .select("_id name isGroup createdAt participants bio")
-  //       .populate("participants.user", "username profile phoneNumber");
-
-  //     userRooms.forEach((room: any) => {
-  //       socket.join(room._id.toString());
-  //     });
-
-  //     await sendOnlineUsers();
-  //     socket.emit("users:userRooms", userRooms);
-  //   } catch (err) {
-  //     console.error("Error logging in user:", err);
-  //     socket.emit("error", { message: "Login failed" });
-  //   }
-  // });
-
-  // socket.on("users:disconnect", async () => {
-  //   const lastSeen = new Date();
-
-  //   await UserModel.updateOne({ _id: userId }, { lastSeen });
-
-  //   socket.leave(userId as string); // mongo id
-  //   socket.leave(userSocketId); // socket id
-
-  //   const allUsers = await UserModel.find().select(
-  //     "_id username profile lastSeen bio lastname firstname email stories"
-  //   );
-
-  //   allUsers.forEach((user: any) => {
-  //     user["userSocketId"] = userSocketId;
-  //   });
-
-  //   await sendOnlineUsers();
-  //   io.emit("users:getUsersResponse", allUsers);
-  // });
-  
-  // const sendOfflineUsers = async (socket: Socket) => {
-  //   const allUsers = await UserModel.find().select(
-  //     "_id username profile lastSeen bio lastname firstname email stories"
-  //   );
-
-  //   const offlineUsers = allUsers.filter(
-  //     (user: any) => !onlineUsers.has(user._id.toString())
-  //   );
-
-  //   socket.emit("users:offlineUsers", offlineUsers);
-  // };
-
-  // const sendOnlineUsers = async () => {
-  //   try {
-  //     const user = await UserModel.findById(userId, {
-  //       __v: 0,
-  //       otp: 0,
-  //       otpExpire: 0,
-  //       refreshToken: 0,
-  //       lastDateIn: 0,
-  //     });
-
-  //     if (user) {
-  //       onlineUsers.set(userId, user);
-  //       io.emit("users:onlineUsers", Array.from(onlineUsers.values()));
-  //       sendOfflineUsers(socket);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching user or updating online users:", error);
-  //   }
-  // };
-
-
-  // ✅ Handle User Login
-
   socket.on("users:login", async () => {
     try {
-      const user = await UserModel.findById(userId).select("_id username profile");
+      const user = await UserModel.findById(userId).select(
+        "_id username profile role"
+      );
       if (!user) {
         return socket.emit("error", { message: "User not found" });
       }
@@ -136,7 +24,12 @@ export const userEvents = (
       console.log(`✅ User ${user.username} logged in`);
 
       // Store user in onlineUsers map
-      onlineUsers.set(userId, { _id: userId, socketId: socket.id, username: user.username, profile: user.profile });
+      onlineUsers.set(userId, {
+        _id: userId,
+        socketId: socket.id,
+        username: user.username,
+        profile: user.profile,
+      });
 
       // Fetch public rooms (General & Announcements)
       const publicRooms = await RoomModel.find({
@@ -167,17 +60,40 @@ export const userEvents = (
 
       // Fetch all rooms the user is in
       const userRooms = await RoomModel.find({
-        $or: [{ isPublic: true }, { "participants.user": user._id }, { isDeleted: false }],
+        $or: [{ isPublic: true }, { "participants.user": user._id }],
+        isDeleted: false,
       })
         .select("_id name isGroup createdAt participants bio")
-        .populate("participants.user", "username profile phoneNumber");
+        .populate("participants.user", "username profile phoneNumber")
+        .lean();
 
-      userRooms.forEach((room: any) => {
+      // Fetch and attach the last message for each room
+      for (const room of userRooms) {
+        const lastMessage = await MessageModel.findOne({
+          room: room._id,
+          isDeleted: false,
+          deletedBy: { $not: { $elemMatch: { $eq: userId } } },
+        })
+          .sort({ createdAt: -1 })
+          .select("_id sender content createdAt")
+          .populate("sender", "username profile")
+          .lean();
+
+        if (lastMessage) {
+          lastMessage.content = decrypt(lastMessage.content);
+        }
+        room.lastMessage = lastMessage || null;
+      }
+
+      // Join all rooms
+      userRooms.forEach((room) => {
         socket.join(room._id.toString());
       });
 
-      // Update online users & notify clients
+      // Notify other users of online status
       await sendOnlineUsers();
+
+      // Send rooms with the last message attached directly to each room object
       socket.emit("users:userRooms", userRooms);
     } catch (err) {
       console.error("❌ Error logging in user:", err);
@@ -185,10 +101,9 @@ export const userEvents = (
     }
   });
 
-  // ✅ Handle User Disconnect
   socket.on("disconnect", async () => {
     if (onlineUsers.has(userId)) {
-      onlineUsers.delete(userId); // Remove from online users
+      onlineUsers.delete(userId); 
     }
 
     const lastSeen = new Date();
@@ -196,33 +111,75 @@ export const userEvents = (
 
     console.log(`❌ User ${userId} disconnected`);
 
-    await sendOnlineUsers(); // Update online users list
+    await sendOnlineUsers(); 
   });
 
-  // ✅ Send Online Users
+  const getLastMessageBetweenUsers = async (
+    userId1: string,
+    userId2: string
+  ) => {
+    const lastMessage = await MessageModel.findOne({
+      $or: [
+        { sender: userId1, receiver: userId2 },
+        { sender: userId2, receiver: userId1 },
+        // { room: isSaveMessage && roomName },
+      ],
+      isDeleted: false,
+      deletedBy: { $not: { $elemMatch: { $eq: userId } } },
+    })
+      .select("_id sender content createdAt isDeleted deletedBy")
+      .populate("sender", "username profile phoneNumber role")
+      .sort({ createdAt: -1 });
+          
+    if (lastMessage) lastMessage.content = decrypt(lastMessage?.content);
+
+    return lastMessage;
+  };
+
   const sendOnlineUsers = async () => {
     try {
-      io.emit("users:onlineUsers", Array.from(onlineUsers.values()));
+      const onlineUsersArray = await Promise.all(
+        Array.from(onlineUsers.values()).map(async (user: any) => {
+          const lastMessage = await getLastMessageBetweenUsers(
+            userId,
+            user._id
+          );
+          return { ...user, lastMessage };
+        })
+      );
+
+      io.emit("users:onlineUsers", onlineUsersArray);
       await sendOfflineUsers();
     } catch (error) {
       console.error("❌ Error sending online users:", error);
     }
   };
 
-  // ✅ Send Offline Users
   const sendOfflineUsers = async () => {
-    const allUsers = await UserModel.find().select("_id username profile lastSeen");
+    const allUsers = await UserModel.find().select(
+      "_id username profile lastSeen role"
+    );
 
-    const offlineUsers = allUsers.filter((user: any) => !onlineUsers.has(user._id.toString()));
+    const offlineUsersArray = await Promise.all(
+      allUsers
+        .filter((user: any) => !onlineUsers.has(user._id.toString()))
+        .map(async (user: any) => {
+          const lastMessage = await getLastMessageBetweenUsers(
+            userId,
+            user._id
+          ); // userId is the logged-in user
+          return { ...user.toObject(), lastMessage };
+        })
+    );
 
-    io.emit("users:offlineUsers", offlineUsers);
+    io.emit("users:offlineUsers", offlineUsersArray);
   };
 
   socket.on("users:getUsers", async () => {
     const allUsers = await UserModel.find(
       // for now its gonna be all users, later we will filter by contacts
       {},
-      "_id username profile lastSeen bio lastname firstname email stories"
+      "_id username profile lastSeen bio lastname firstname email stories role"
     );
 
     allUsers.forEach((user: any) => {
@@ -242,6 +199,4 @@ export const userEvents = (
     });
     io.emit("users:getUserDataResponse", recipient);
   });
-
-
 };

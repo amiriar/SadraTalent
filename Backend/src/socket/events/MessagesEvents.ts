@@ -5,7 +5,6 @@ import mongoose from "mongoose";
 import { Socket, Server } from "socket.io";
 import path from "path";
 import fs from "fs";
-import { Room } from "@/api/admin/rooms/roomsModel";
 
 export const messagesEvents = (
   socket: Socket,
@@ -146,7 +145,7 @@ export const messagesEvents = (
         room: newMessage.room,
         status: newMessage.status,
         isSending: false,
-        voiceUrl: newMessage.voiceUrl,
+        voice: newMessage.voice,
         replyTo: replyToMessage
           ? {
               _id: replyToMessage._id,
@@ -156,8 +155,14 @@ export const messagesEvents = (
                 username: replyToMessage.sender.username,
                 profile: replyToMessage.sender.profile,
               },
-              fileUrl: replyToMessage.fileUrl || null,
-              voiceUrl: replyToMessage.voiceUrl || null,
+              file:
+                typeof replyToMessage.file === "object"
+                  ? replyToMessage.file
+                  : null,
+              voice:
+                typeof replyToMessage.file === "object"
+                  ? replyToMessage.file
+                  : null,
             }
           : null,
         sender: {
@@ -176,6 +181,9 @@ export const messagesEvents = (
         updatedAt: newMessage.updateAt,
       };
 
+      console.log("socket.rooms");  
+      console.log(socket.rooms);
+      
       io.emit("messages:sendMessage", messageToSend);
     } catch (error) {
       console.error("Error sending message:", { messgae: error });
@@ -184,25 +192,15 @@ export const messagesEvents = (
 
   socket.on("messages:forwardMessage", async (messageData) => {
     try {
-      const { message, room, receiverId } = messageData;
+      const { messageId, room, receiverId } = messageData;
 
-      if (message.replyTo) message.replyTo = message.replyTo._id;
+      // Get plain object instead of document instance
+      const message = await MessageModel.findById(messageId).lean();
 
-      if (message?.recipient?.username) {
-        delete message?.recipient?.profile;
-        delete message?.recipient?.username;
-        delete message?.recipient?.phoneNumber;
+      if (!message) {
+        socket.emit("error", { message: "Message not found" });
+        return;
       }
-
-      if (message?.sender?.username) {
-        delete message?.recipient?.profile;
-        delete message?.recipient?.username;
-        delete message?.recipient?.phoneNumber;
-      }
-
-      if (message.createdAt) delete message.createdAt;
-
-      delete message._id;
 
       let finalRoom;
 
@@ -212,21 +210,30 @@ export const messagesEvents = (
         finalRoom = room;
       }
 
-      message.room = finalRoom;
+      // Create new message with modified properties
+      const forwardedMessage = await MessageModel.create({
+        ...message,
+        room: finalRoom,
+        receiver: receiverId || message.receiver,
+        isForwarded: true,
+        createdAt: new Date(), // Reset timestamp
+        _id: new mongoose.Types.ObjectId(), // Generate new ID
+      });
 
-      message.sender = userId;
-      message.recipient = room;
+      // Decrypt content for response
+      const decryptedMessage = {
+        ...forwardedMessage.toObject(),
+        content: decrypt(forwardedMessage.content),
+      };
 
-      message.isForwarded = true;
-
-      message.content = encrypt(message.content);
-
-      const forwardedMessage = await MessageModel.create(message);
-      io.emit("messages:forwardMessageResponse", forwardedMessage);
-
-      // io.to(finalRoom).emit("forwardMessageResponse", forwardedMessage);
+      // Emit only to the target room
+      io.to(finalRoom).emit(
+        "messages:forwardMessageResponse",
+        decryptedMessage
+      );
     } catch (error) {
-      console.error("Error sending message:", { message: error });
+      console.error("Error forwarding message:", error);
+      socket.emit("error", { message: "Failed to forward message" });
     }
   });
 
@@ -328,8 +335,8 @@ export const messagesEvents = (
 
           history = await MessageModel.find({
             $or: [
-              { sender: senderObjectId, recipient: recipientObjectId },
-              { sender: recipientObjectId, recipient: senderObjectId },
+              { sender: senderObjectId, receiver: recipientObjectId },
+              { sender: recipientObjectId, receiver: senderObjectId },
               { room: isSaveMessage && roomName },
             ],
             isDeleted: false,
@@ -348,6 +355,14 @@ export const messagesEvents = (
               path: "storyId",
               select:
                 "description file thumbnail hyperLink user isDeleted expireAt seenBy likes isAccepted",
+            })
+            .populate({
+              path: "file",
+              select: "-__v",
+            })
+            .populate({
+              path: "voice",
+              select: "-__v",
             })
             .sort({ createdAt: -1 })
             .skip(page * pageSize)
@@ -373,6 +388,14 @@ export const messagesEvents = (
               select:
                 "description file thumbnail hyperLink user isDeleted expireAt seenBy likes isAccepted",
             })
+            .populate({
+              path: "file",
+              select: "-__v",
+            })
+            .populate({
+              path: "voice",
+              select: "-__v",
+            })
             .sort({ createdAt: -1 })
             .skip(page * pageSize)
             .limit(pageSize)
@@ -392,31 +415,34 @@ export const messagesEvents = (
                 : decryptedReplyContent;
           }
 
-          if (message.fileUrl) {
+          if (message.file) {
             const filePath = path.join(
               __dirname,
               "..",
               "..",
-              typeof message.fileUrl == "string"
-                ? message.fileUrl
-                : message.fileUrl.filePath
+              "..",
+              typeof message.file == "string"
+                ? message.file
+                : message.file.filePath
             );
+
             if (!fs.existsSync(filePath)) {
-              message.fileUrl = ".404";
+              message.file = ".404";
             }
           }
 
-          if (message.voiceUrl) {
+          if (message.voice) {
             const voicePath = path.join(
               __dirname,
               "..",
               "..",
-              typeof message.voiceUrl == "string"
-                ? message.voiceUrl
-                : message.voiceUrl.filePath
+              "..",
+              typeof message.voice == "string"
+                ? message.voice
+                : message.voice.filePath
             );
             if (!fs.existsSync(voicePath)) {
-              message.voiceUrl = ".404";
+              message.voice = ".404";
             }
           }
 
@@ -444,14 +470,14 @@ export const messagesEvents = (
         socket.emit("messages:searchResults", []);
         return;
       }
-  
+
       // Removed pagination logic: pageSize, page, maxCount, hasMoreMessages
       // const pageSize = 50;  // You can uncomment this later if you want to add pagination
       // let page = 0;  // You can uncomment this later if you want to add pagination
       // let foundMessages = [];  // This will store all the found messages
-  
+
       const lowerCaseWord = word.toLowerCase();
-  
+
       // Removed pagination and maxCount
       const messages = await MessageModel.find({
         room,
@@ -469,24 +495,24 @@ export const messagesEvents = (
           },
         })
         .lean();
-  
+
       // Check if there are no messages
       if (messages.length === 0) {
         socket.emit("messages:searchResults", []);
         return;
       }
-  
+
       // Find and push matching messages
       const foundMessages = [];
-  
+
       for (const message of messages) {
         const decryptedContent = decrypt(message.content);
-  
+
         let decryptedReplyContent = null;
         if (message.replyTo?.content) {
           decryptedReplyContent = decrypt(message.replyTo.content);
         }
-  
+
         // If the message or its reply contains the word, add it to the results
         if (
           decryptedContent.toLowerCase().includes(lowerCaseWord) ||
@@ -502,7 +528,7 @@ export const messagesEvents = (
           });
         }
       }
-  
+
       // Emit the found messages
       socket.emit("messages:searchResults", foundMessages.reverse());
     } catch (error) {
@@ -510,5 +536,4 @@ export const messagesEvents = (
       socket.emit("messages:searchResults", []);
     }
   });
-  
 };

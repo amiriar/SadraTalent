@@ -73,16 +73,13 @@ const ChatInput = ({
       };
 
       const formData = new FormData();
-      formData.append("sender", JSON.stringify(senderData));
-      recipient && formData.append("recipient", JSON.stringify(recipientData));
-      formData.append("room", room);
       formData.append("file", file);
 
-      let fileUrl = "";
+      let fileId = "";
 
       await axios
         .post(
-          `${import.meta.env.VITE_BACKEND_BASE_URL}/messages/upload-file`,
+          `${import.meta.env.VITE_BACKEND_BASE_URL}/upload/file`,
           formData,
           {
             headers: {
@@ -100,14 +97,14 @@ const ChatInput = ({
         )
         .then((res) => {
           setUploadFileProgress(0);
-          fileUrl = res.data.fileUrl;
+          fileId = res.data.responseObject._id;
         })
         .catch(() => {
           setUploadFileProgress("در فرایند بارگزاری مشکلی پیش آمد !");
         });
 
-      socket?.emit("fileUpload", {
-        fileUrl: fileUrl,
+      socket?.emit("uploads:fileUpload", {
+        fileId: fileId,
         sender: senderData,
         room,
         ...(recipientData && { recipient: recipientData }),
@@ -128,6 +125,7 @@ const ChatInput = ({
       const tempId = uuidv4();
       const messageData: Partial<Message> = {
         tempId,
+        // @ts-ignore
         sender: {
           _id: sender?._id ?? "",
           username: sender?.username ?? "unknown",
@@ -160,7 +158,6 @@ const ChatInput = ({
           )
         );
       } else {
-
         socket.emit("messages:sendMessage", messageData);
 
         setMessages((prevMessages: Message[]) => [

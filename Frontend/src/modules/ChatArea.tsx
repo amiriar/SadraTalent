@@ -20,6 +20,8 @@ import EditRoomModal from "./EditRoomModal";
 import MessageStatus from "./MessageStatus";
 import RoomModal from "./RoomModal";
 import SearchModal from "./SearchModal";
+import { BsFillChatSquareDotsFill } from "react-icons/bs";
+import SupportChatModal from "./SupportChatModal";
 
 interface ChatAreaProps {
   offlineUsers: Recipient[];
@@ -293,19 +295,17 @@ function ChatArea({
         const formData = new FormData();
         formData.append("voiceMessage", blob, "voice-message.webm");
 
-        const senderJson = JSON.stringify(sender?._id);
-        const recipientJson = JSON.stringify(recipient && recipient?._id);
-        const roomJson = JSON.stringify(room);
+        // const senderJson = JSON.stringify(sender?._id);
+        // const recipientJson = JSON.stringify(recipient && recipient?._id);
+        // const roomJson = JSON.stringify(room);
 
-        formData.append("sender", senderJson);
-        if (recipient) formData.append("recipient", recipientJson);
-        formData.append("room", roomJson);
+        // formData.append("sender", senderJson);
+        // if (recipient) formData.append("recipient", recipientJson);
+        // formData.append("room", roomJson);
 
         try {
           const response = await axios.post(
-            `${
-              import.meta.env.VITE_BACKEND_BASE_URL
-            }/api/messages/upload-voice`,
+            `${import.meta.env.VITE_BACKEND_BASE_URL}/upload/voice`,
             formData,
             {
               headers: {
@@ -315,11 +315,11 @@ function ChatArea({
             }
           );
 
-          const mp3Url = response.data.filePath;
-          socket?.emit("voice-message", {
-            mp3Url,
+          const voiceId = await response.data.responseObject._id;
+
+          socket?.emit("uploads:voiceMessage", {
+            voiceId,
             room,
-            senderId: sender?._id,
           });
         } catch (error) {
           console.error("Error uploading voice message:", error);
@@ -547,11 +547,9 @@ function ChatArea({
   };
 
   const [searchModal, setSearchModal] = useState(false);
-  const [searchText, setSearchText] = useState<string>();
 
   const searchModalHandler = () => {
     setFoundMessages([]);
-    setSearchText("");
     setSearchModal(true);
   };
 
@@ -674,20 +672,19 @@ function ChatArea({
   };
 
   const forwardMessage = (
-    room: IUser,
+    room: Room,
     message: Message,
-    recipientId?: string
+    receiverId?: string
   ) => {
     socket?.emit("messages:forwardMessage", {
-      message,
+      messageId: message._id,
       room: room._id,
-      senderId: sender?._id,
-      recipientId: recipientId ? recipientId : null,
+      receiverId: receiverId ? receiverId : null,
     });
     handleCloseForwardModal();
     Swal.fire({
-      title: "Messgae Sent",
-      text: "Message Sent Successfully!",
+      title: "Message Forwarded",
+      text: "Message Forwarded Successfully!",
       icon: "success",
       confirmButtonText: "Done",
     });
@@ -729,6 +726,11 @@ function ChatArea({
     });
   };
 
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const supportModalHandler = () => {
+    setSupportModalOpen(true);
+  };
+
   return (
     <div className="chat-area" style={{ fontFamily: "Poppins" }}>
       <div
@@ -760,7 +762,6 @@ function ChatArea({
                 className="avatar"
               />
             ) : (
-              
               "Chat Room: "
             )}{" "}
             <span style={{ marginLeft: "15px" }}>
@@ -800,7 +801,6 @@ function ChatArea({
             }}
             onClick={() => searchModalHandler()}
           >
-            
             {shownRoomName === "No room joined" ? "" : <IoMdSearch size={25} />}
           </div>
         </div>
@@ -904,11 +904,6 @@ function ChatArea({
           <Button variant="outlined" onClick={handleLoadMore}>
             Load More
           </Button>
-
-          {/* <video id="localCameraVideo" autoPlay playsInline></video>
-          <video id="localScreenVideo" autoPlay playsInline></video>
-          <video id="remoteCameraVideo" autoPlay playsInline></video>
-          <video id="remoteScreenVideo" autoPlay playsInline></video> */}
           {messages.map((msg: Message) => {
             // @ts-ignore
             const isAdminOrOwner = room.participants?.some(
@@ -995,9 +990,9 @@ function ChatArea({
                           // msg?.sender?._id === sender?._id ? "left" : "right",
                         }}
                       >
-                        {msg.replyTo.fileUrl
+                        {msg.replyTo.file
                           ? "File"
-                          : msg.replyTo.voiceUrl
+                          : msg.replyTo.voice
                           ? "Voice Message"
                           : msg.replyTo.content}
                       </span>
@@ -1145,7 +1140,7 @@ function ChatArea({
                           Reply{" "}
                         </button>
 
-                        {!msg.fileUrl && !msg.voiceUrl && (
+                        {!msg.file && !msg.voice && (
                           <button
                             onClick={() => {
                               toggleOptions(msg._id ?? "");
@@ -1186,8 +1181,8 @@ function ChatArea({
                           Forward
                         </button>
 
-                        {!msg.fileUrl &&
-                          !msg.voiceUrl &&
+                        {!msg.file &&
+                          !msg.voice &&
                           !msg.isForwarded &&
                           sender?._id === msg.sender._id && (
                             <button
@@ -1213,7 +1208,7 @@ function ChatArea({
                   </div>
                 </div>
 
-                {msg.voiceUrl && (
+                {msg.voice && (
                   <div
                     style={{
                       width: "100%",
@@ -1225,7 +1220,9 @@ function ChatArea({
                     <audio className="audio-player" controls>
                       <source
                         src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                          msg.voiceUrl
+                          typeof msg.voice === "object"
+                            ? msg.voice.filePath
+                            : ""
                         }`}
                         type="audio/mp3"
                       />
@@ -1234,7 +1231,7 @@ function ChatArea({
                   </div>
                 )}
 
-                {msg.fileUrl && (
+                {msg.file && (
                   <div
                     style={{
                       width: "100%",
@@ -1244,14 +1241,14 @@ function ChatArea({
                     }}
                   >
                     {/\.(jpg|jpeg|png|gif)$/i.test(
-                      typeof msg.fileUrl === "object"
-                        ? msg.fileUrl.filePath
-                        : ""
+                      typeof msg.file === "object" ? msg.file.filePath : ""
                     ) ? (
                       <div>
                         <img
                           src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                            msg.fileUrl
+                            typeof msg.file === "object"
+                              ? msg.file.filePath
+                              : ""
                           }`}
                           alt="Uploaded media"
                           style={{
@@ -1269,7 +1266,9 @@ function ChatArea({
                         >
                           <img
                             src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                              msg.fileUrl
+                              typeof msg.file === "object"
+                                ? msg.file.filePath
+                                : ""
                             }`}
                             alt="Uploaded media in full screen"
                             style={{
@@ -1283,13 +1282,11 @@ function ChatArea({
                         </Dialog>
                       </div>
                     ) : /\.(mp4|mov|avi|wmv)$/i.test(
-                        typeof msg.fileUrl === "object"
-                          ? msg.fileUrl.filePath
-                          : ""
+                        typeof msg.file === "object" ? msg.file.filePath : ""
                       ) ? (
                       <video
                         src={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                          msg.fileUrl
+                          typeof msg.file === "object" ? msg.file.filePath : ""
                         }`}
                         controls
                         style={{ maxWidth: "400px", borderRadius: "8px" }}
@@ -1297,9 +1294,7 @@ function ChatArea({
                         Your browser does not support the video tag.
                       </video>
                     ) : /\.(zip|rar)$/i.test(
-                        typeof msg.fileUrl === "object"
-                          ? msg.fileUrl.filePath
-                          : ""
+                        typeof msg.file === "object" ? msg.file.filePath : ""
                       ) ? (
                       <div
                         style={{
@@ -1311,16 +1306,15 @@ function ChatArea({
                       >
                         <p style={{ margin: 0 }}>
                           <strong>Compressed File:</strong>{" "}
-                          {typeof msg.fileUrl === "object"
-                            ? msg.fileUrl.filePath
-                                .split("/")
-                                .pop()
-                                ?.split("*")[0]
+                          {typeof msg.file === "object"
+                            ? msg.file.filePath.split("/").pop()?.split("*")[0]
                             : ""}
                         </p>
                         <a
                           href={`${import.meta.env.VITE_BACKEND_BASE_URL}/${
-                            msg.fileUrl
+                            typeof msg.file === "object"
+                              ? msg.file.filePath
+                              : ""
                           }`}
                           download
                           style={{
@@ -1337,9 +1331,7 @@ function ChatArea({
                         </a>
                       </div>
                     ) : /\.(404)$/i.test(
-                        typeof msg.fileUrl === "object"
-                          ? msg.fileUrl.filePath
-                          : ""
+                        typeof msg.file === "object" ? msg.file.filePath : ""
                       ) ? (
                       <p>File not found</p>
                     ) : (
@@ -1368,12 +1360,41 @@ function ChatArea({
             flexDirection: "column",
           }}
         >
-          <span>
-            <IoIosChatbubbles size={70} color="#999" />
-          </span>
-          <h3 style={{ color: "#999" }}>
-            Please Join A Room To Start Chatting !
-          </h3>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              flexDirection: "column",
+            }}
+          >
+            <span>
+              <IoIosChatbubbles size={70} color="#999" />
+            </span>
+            <h3 style={{ color: "#999" }}>
+              Please Join A Room To Start Chatting !
+            </h3>
+          </div>
+
+          {/* support icon */}
+          <div
+            style={{
+              background: "#2c86c2",
+              borderRadius: "50%",
+              width: 60,
+              height: 60,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              cursor: "pointer",
+              position: "absolute",
+              right: "25px",
+              bottom: "95px",
+            }}
+            onClick={supportModalHandler}
+          >
+            <BsFillChatSquareDotsFill size={25} color="#FFF" />
+          </div>
         </div>
       )}
 
@@ -1520,9 +1541,7 @@ function ChatArea({
       />
 
       <ForwardModal
-        // @ts-ignore
         offlineUsers={offlineUsers}
-        // @ts-ignore
         onlineUsers={onlineUsers}
         ModalStyle={ModalStyle}
         openForwardModal={openForwardModal}
@@ -1548,7 +1567,6 @@ function ChatArea({
         onClose={() => setEditModalOpen(false)}
         // @ts-ignore
         room={room}
-        // @ts-ignore
         onSave={handleEditRoom}
       />
 
@@ -1569,6 +1587,19 @@ function ChatArea({
         room={room}
         foundMessages={foundMessages}
         sender={sender}
+      />
+
+      <SupportChatModal
+        open={supportModalOpen}
+        setOpen={setSupportModalOpen}
+        messages={messages}
+        sender={sender}
+        onlineUsers={onlineUsers}
+        room={room}
+        socket={socket}
+        publicName={publicName}
+        replyMessage={replyMessage}
+        setReplyMessage={setReplyMessage}
       />
     </div>
   );

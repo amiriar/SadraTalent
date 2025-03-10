@@ -1,4 +1,5 @@
-import MessageModel from "@/api/admin/messages/messagesSchema";
+import { Message } from "@/api/admin/messages/messagesModel";
+import MessageModel, { IMessage } from "@/api/admin/messages/messagesSchema";
 import UserModel from "@/api/admin/user/userSchema";
 import { Socket, Server } from "socket.io";
 
@@ -11,14 +12,14 @@ export const uploadEvents = (
 ) => {
   socket.on("uploads:fileUpload", async (data: any) => {
     try {
-      const { fileUrl, sender, room, receiver } = data;
+      const { fileId, sender, room, receiver } = data;
 
-      if (!sender || !room || !fileUrl) {
+      if (!sender || !room || !fileId) {
         throw new Error("Missing data");
       }
 
-      const messageData: any = {
-        fileUrl,
+      const messageData: Partial<IMessage> = {
+        file: fileId,
         room: room._id ? room._id : room,
         sender: sender._id ? sender._id : sender,
       };
@@ -27,7 +28,9 @@ export const uploadEvents = (
         messageData.receiver = receiver._id;
       }
 
-      const newMessage = await MessageModel.create(messageData);
+      const newMessage = await (
+        await MessageModel.create(messageData)
+      ).populate("file", "-__v");
 
       const Fullsender = await UserModel.findById(
         newMessage.sender,
@@ -71,19 +74,21 @@ export const uploadEvents = (
 
   socket.on("uploads:voiceMessage", async (data: any) => {
     try {
-      const { mp3Url, room } = data;
+      const { voiceId, room } = data;
 
-      if (!mp3Url || !room || !userId) {
+      if (!voiceId || !room || !userId) {
         throw new Error("Missing data");
       }
 
       const messageData = {
-        voiceUrl: mp3Url,
+        voice: voiceId,
         room: room._id ? room._id : room,
         sender: userId,
       };
 
-      const newMessage = await MessageModel.create(messageData);
+      const newMessage = await (
+        await MessageModel.create(messageData)
+      ).populate("voice", "-__v");
 
       const sender = await UserModel.findById(
         newMessage.sender,

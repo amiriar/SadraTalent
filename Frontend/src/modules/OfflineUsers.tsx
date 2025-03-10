@@ -40,7 +40,9 @@ function OfflineUsers({ offlineUsers, pvHandler }: OnlineUsersProps) {
             >
               <span>{user.username}</span>
               <span style={{ fontSize: "0.75rem", color: "gray" }}>
-                {user.lastSeen
+                {user.lastMessage
+                  ? user?.lastMessage.content
+                  : user.lastSeen
                   ? ` ${new Date(user.lastSeen).toLocaleString()}`
                   : " (Offline)"}
               </span>
