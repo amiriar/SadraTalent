@@ -181,9 +181,6 @@ export const messagesEvents = (
         updatedAt: newMessage.updateAt,
       };
 
-      console.log("socket.rooms");  
-      console.log(socket.rooms);
-      
       io.emit("messages:sendMessage", messageToSend);
     } catch (error) {
       console.error("Error sending message:", { messgae: error });

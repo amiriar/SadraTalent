@@ -137,7 +137,7 @@ export const storiesEvents = (
             stories: user.stories,
           }));
 
-        socket.volatile.emit("stories:getStoriesResponse", response);
+        socket.volatile.broadcast.emit("stories:getStoriesResponse", response);
       } catch (error) {
         console.error("Error adding story:", error);
         socket.emit("error", { message: "Failed to add story" });

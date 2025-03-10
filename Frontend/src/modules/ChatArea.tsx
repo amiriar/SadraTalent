@@ -1331,7 +1331,7 @@ function ChatArea({
                         </a>
                       </div>
                     ) : /\.(404)$/i.test(
-                        typeof msg.file === "object" ? msg.file.filePath : ""
+                        typeof msg.file === "string" ? msg.file : ""
                       ) ? (
                       <p>File not found</p>
                     ) : (

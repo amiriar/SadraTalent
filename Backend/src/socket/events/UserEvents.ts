@@ -29,6 +29,7 @@ export const userEvents = (
         socketId: socket.id,
         username: user.username,
         profile: user.profile,
+        role: user.role,
       });
 
       // Fetch public rooms (General & Announcements)
@@ -103,7 +104,7 @@ export const userEvents = (
 
   socket.on("disconnect", async () => {
     if (onlineUsers.has(userId)) {
-      onlineUsers.delete(userId); 
+      onlineUsers.delete(userId);
     }
 
     const lastSeen = new Date();
@@ -111,7 +112,7 @@ export const userEvents = (
 
     console.log(`❌ User ${userId} disconnected`);
 
-    await sendOnlineUsers(); 
+    await sendOnlineUsers();
   });
 
   const getLastMessageBetweenUsers = async (
@@ -130,7 +131,7 @@ export const userEvents = (
       .select("_id sender content createdAt isDeleted deletedBy")
       .populate("sender", "username profile phoneNumber role")
       .sort({ createdAt: -1 });
-          
+
     if (lastMessage) lastMessage.content = decrypt(lastMessage?.content);
 
     return lastMessage;

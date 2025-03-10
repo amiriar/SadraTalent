@@ -308,8 +308,7 @@ const Home: React.FC = () => {
         }
       }
     );
-    
-    
+
     const handleIncomingMessage = (messageData: Message) => {
       setMessages((prevMessages) => {
         const currentRoomId = typeof room === "string" ? room : room?._id;
@@ -396,7 +395,11 @@ const Home: React.FC = () => {
 
   socket?.on(
     "stories:deleteStoryResponse",
-    ({ message }: { message: string }) => {
+    ({ message, storyId }: { message: string; storyId: string }) => {
+      setStories((prevStories) =>
+        prevStories.filter((story) => story.id !== storyId)
+      );
+
       Swal.fire({
         title: "Deleted!",
         text: message,

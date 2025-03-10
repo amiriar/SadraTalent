@@ -103,7 +103,7 @@ export default function SupportChatModal({
 
     const intervalId = setInterval(() => {
       const onlineOperatorCount = onlineUsers.filter(
-        (ou) => ou.lastMessage?.sender?.role === Roles.Support
+        (ou) => ou.role === Roles.Support
       ).length;
 
       const newMessage: Message = {
@@ -353,18 +353,13 @@ export default function SupportChatModal({
       </Drawer>
       <SupportTopicModal
         topics={topics}
+        socket={socket}
         selectSupportTopicModal={selectSupportTopicModal}
         setSelectSupportTopicModal={setSelectSupportTopicModal}
       />
     </>
   );
 }
-
-// function Header({ setOpen }: { setOpen: (open: boolean) => void }) {
-//   return (
-
-//   );
-// }
 
 const styles = {
   icon: {
