@@ -1,12 +1,12 @@
 import { Avatar } from "@mui/material";
 import { CiClock2 } from "react-icons/ci";
-import { Message, Sender } from "./types/types";
+import { IMessage, Sender } from "./types/types";
 
 export function MessageBubble({
   msg,
   sender,
 }: {
-  msg: Message;
+  msg: IMessage;
   sender: Sender | null;
 }) {
   const isSent = msg.sender._id === sender?._id;

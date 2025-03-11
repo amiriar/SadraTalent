@@ -23,12 +23,12 @@ export const handleSocketConnections = (io: Server) => {
     createPublicRooms();
 
     const eventHandlers = [
-      userEvents,
-      chatEvents,
+      userEvents, // ✅
+      chatEvents, // ✅
       messagesEvents,
       roomsEvents,
       storiesEvents,
-      uploadEvents,
+      uploadEvents, // ✅
     ];
 
     eventHandlers.forEach((handler) =>
@@ -1216,5 +1216,6 @@ export const handleSocketConnections = (io: Server) => {
     //     });
     //   }
     // });
+  
   });
 };

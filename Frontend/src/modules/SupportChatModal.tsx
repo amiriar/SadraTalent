@@ -1,7 +1,7 @@
 import { Drawer, Box, TextField, InputAdornment } from "@mui/material";
 import { IoCloseSharp } from "react-icons/io5";
 import { useEffect, useState } from "react";
-import { Message, Recipient, Room, Sender } from "./types/types";
+import { IMessage, Recipient, Room, Sender } from "./types/types";
 import { Roles } from "../shared/enum";
 import { MessageBubble } from "./SupportMessageBubble";
 import { Socket } from "socket.io-client";
@@ -12,14 +12,14 @@ import SupportTopicModal from "./SupportTopicModal";
 interface SupportChatModalProps {
   open: boolean;
   setOpen: (open: boolean) => void;
-  messages: Message[];
+  messages: IMessage[];
   sender: Sender | null;
   onlineUsers: Recipient[];
   room: Room | string;
   socket: typeof Socket | null;
   publicName: string;
-  replyMessage: Message | null;
-  setReplyMessage: (message: Message | null) => void;
+  replyMessage: IMessage | null;
+  setReplyMessage: (message: IMessage | null) => void;
 }
 
 export default function SupportChatModal({
@@ -34,7 +34,7 @@ export default function SupportChatModal({
   replyMessage,
   setReplyMessage,
 }: SupportChatModalProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<IMessage[]>([]);
 
   const getInitialMessages = () => [
     {
@@ -94,7 +94,7 @@ export default function SupportChatModal({
     publicName: "پشتیبانی صدرا",
   });
 
-  const handleReplyMessage = (message: Message) => {
+  const handleReplyMessage = (message: IMessage) => {
     setReplyMessage(message);
   };
 
@@ -106,7 +106,7 @@ export default function SupportChatModal({
         (ou) => ou.role === Roles.Support
       ).length;
 
-      const newMessage: Message = {
+      const newMessage: IMessage = {
         _id: "999999999999999999999999",
         sender: {
           _id: "999999999999999999999999",
@@ -148,7 +148,7 @@ export default function SupportChatModal({
 
     if (socket && room) {
       const tempId = uuidv4();
-      const messageData: Message = {
+      const messageData: IMessage = {
         tempId,
         // @ts-ignore
         sender: {
@@ -195,7 +195,7 @@ export default function SupportChatModal({
 
       socket.emit("support:sendMessage", messageData);
 
-      setMessages((prevMessages: Message[]) => [...prevMessages, messageData]);
+      setMessages((prevMessages: IMessage[]) => [...prevMessages, messageData]);
 
       setMessage("");
     } else {

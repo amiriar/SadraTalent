@@ -68,6 +68,7 @@ export const storiesEvents = (
             path: "likes",
             select: "_id username profile",
           });
+          console.log(story?.likes);
 
         if (!story) {
           throw new Error("Story not found");
@@ -80,6 +81,8 @@ export const storiesEvents = (
         const filteredLikes = story.likes.filter(
           (user) => user._id?.toString() !== userId
         );
+
+        
 
         socket.emit("stories:usersSeenStoryResponse", {
           seenBy: filteredSeenBy,

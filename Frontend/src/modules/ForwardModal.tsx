@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import { FaPaperPlane } from "react-icons/fa";
-import { IUser, Message, Room, Sender } from "./types/types";
+import { IUser, IMessage, Room, Sender } from "./types/types";
 import { FaUserGroup } from "react-icons/fa6";
 interface IForward {
   offlineUsers: any[];
@@ -19,7 +19,7 @@ interface IForward {
   handleCloseForwardModal: any;
   ModalStyle: any;
   sender: Sender | null;
-  selectedMessageToForward: Message | null;
+  selectedMessageToForward: IMessage | null;
   userRooms: Room[];
   forwardMessage: any;
 }

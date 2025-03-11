@@ -56,8 +56,6 @@ class AuthController {
   public verifyOtp: RequestHandler = async (req: Request, res: Response) => {
     const { phone, code } = req.body;
     const serviceResponse = await authService.loginWithOtp(phone, code);
-    console.log(serviceResponse);
-
     if (serviceResponse.success)
       // @ts-ignore
       res.cookie("accessToken", serviceResponse?.responseObject?.accessToken);

@@ -4,7 +4,7 @@ import { FaMicrophone, FaStop } from "react-icons/fa";
 import { IoSend } from "react-icons/io5";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
-import { Message } from "./types/types";
+import { IMessage } from "./types/types";
 import { useState, useEffect } from "react";
 
 const ChatInput = ({
@@ -123,7 +123,7 @@ const ChatInput = ({
 
     if (socket && room) {
       const tempId = uuidv4();
-      const messageData: Partial<Message> = {
+      const messageData: Partial<IMessage> = {
         tempId,
         // @ts-ignore
         sender: {
@@ -150,7 +150,7 @@ const ChatInput = ({
 
         socket.emit("messages:editMessage", { messageData });
 
-        setMessages((prevMessages: Message[]) =>
+        setMessages((prevMessages: IMessage[]) =>
           prevMessages.map((msg) =>
             msg._id === editMessage._id
               ? { ...msg, ...messageData, isSending: true }
@@ -160,7 +160,7 @@ const ChatInput = ({
       } else {
         socket.emit("messages:sendMessage", messageData);
 
-        setMessages((prevMessages: Message[]) => [
+        setMessages((prevMessages: IMessage[]) => [
           ...prevMessages,
           messageData,
         ]);

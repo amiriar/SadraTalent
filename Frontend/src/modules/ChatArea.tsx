@@ -2,7 +2,7 @@ import { CiClock2 } from "react-icons/ci";
 import { FaChevronDown, FaReply, FaUserPlus } from "react-icons/fa";
 import { Avatar, Button, Dialog } from "@mui/material";
 import { RxCross2 } from "react-icons/rx";
-import { IUser, Message, Recipient, Room, Sender } from "./types/types";
+import { IUser, IMessage, Recipient, Room, Sender } from "./types/types";
 import { useEffect, useRef, useState } from "react";
 import { Socket } from "socket.io-client";
 import axios from "axios";
@@ -30,23 +30,23 @@ interface ChatAreaProps {
   sender: Sender | null;
   recipient: Recipient | null;
   room: Room | string;
-  messages: Message[];
+  messages: IMessage[];
   shownRoomName: string;
   message: string;
   setMessage: (message: string) => void;
-  setMessages: (messages: Message[]) => void;
+  setMessages: (messages: IMessage[]) => void;
   publicName: string;
   setOfflineUsers: (users: Recipient[]) => void;
   setOnlineUsers: (users: Recipient[]) => void;
   setRooms: (rooms: Room[]) => void;
   setRoom: (room: Room | string | null) => void;
   setShownRoomName: (name: string) => void;
-  pinMessage: Message | null;
-  setPinMessage: (message: Message | null) => void;
-  setEditMessage: (message: Message | null) => void;
-  editMessage: Message | null;
-  replyMessage: Message | null;
-  setReplyMessage: (message: Message | null) => void;
+  pinMessage: IMessage | null;
+  setPinMessage: (message: IMessage | null) => void;
+  setEditMessage: (message: IMessage | null) => void;
+  editMessage: IMessage | null;
+  replyMessage: IMessage | null;
+  setReplyMessage: (message: IMessage | null) => void;
   rooms: Room[];
   chatEndRef: React.RefObject<HTMLDivElement>;
 }
@@ -75,7 +75,7 @@ function ChatArea({
   rooms,
   chatEndRef,
 }: ChatAreaProps) {
-  const extractMetadata = (messages: Message[]) => {
+  const extractMetadata = (messages: IMessage[]) => {
     messages.forEach((message) => {
       if (message.content) {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -108,7 +108,7 @@ function ChatArea({
   );
 
   const [selectedMessageToForward, setSelectedMessageToForward] =
-    useState<Message | null>(null);
+    useState<IMessage | null>(null);
 
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -117,7 +117,7 @@ function ChatArea({
   const pinnedMessageRef = useRef<HTMLDivElement | null>(null);
   const pinnedMessageDisplayRef = useRef<HTMLDivElement | null>(null);
   const [currentPinnedMessage, setCurrentPinnedMessage] =
-    useState<Message | null>(null);
+    useState<IMessage | null>(null);
 
   const [openForwardModal, setOpenForwardModal] = useState(false);
 
@@ -209,8 +209,8 @@ function ChatArea({
           setPinMessage(message);
           // @ts-ignore
 
-          setMessages((prevMessages: Message[]) =>
-            prevMessages.map((msg: Message) =>
+          setMessages((prevMessages: IMessage[]) =>
+            prevMessages.map((msg: IMessage) =>
               msg._id === message._id
                 ? { ...msg, isPinned: true }
                 : { ...msg, isPinned: false }
@@ -226,8 +226,8 @@ function ChatArea({
         if (room === responseRoom) {
           setPinMessage(null);
           // @ts-ignore
-          setMessages((prevMessages: Message[]) =>
-            prevMessages.map((msg: Message) =>
+          setMessages((prevMessages: IMessage[]) =>
+            prevMessages.map((msg: IMessage) =>
               msg._id === message._id ? { ...msg, isPinned: false } : msg
             )
           );
@@ -328,7 +328,10 @@ function ChatArea({
     }
   };
 
-  const handleDeleteMessage = async (msg: Message, isAdminOrOwner: boolean) => {
+  const handleDeleteMessage = async (
+    msg: IMessage,
+    isAdminOrOwner: boolean
+  ) => {
     const canDeleteForEveryone =
       isAdminOrOwner || msg?.sender?._id === sender?._id;
 
@@ -365,7 +368,7 @@ function ChatArea({
     });
   };
 
-  const handlePinMessage = async (message: Message) => {
+  const handlePinMessage = async (message: IMessage) => {
     if (message.isPinned) {
       Swal.fire({
         title: "Unpin Message",
@@ -401,12 +404,12 @@ function ChatArea({
     }
   };
 
-  const handleForwardMessage = (message: Message) => {
+  const handleForwardMessage = (message: IMessage) => {
     setSelectedMessageToForward(message);
     handleOpenForwardModal();
   };
 
-  const handleSaveMessage = (message: Message) => {
+  const handleSaveMessage = (message: IMessage) => {
     Swal.fire({
       title: "Save Message",
       text: "Do you want to save this message?",
@@ -424,7 +427,7 @@ function ChatArea({
     });
   };
 
-  const handleEditMessage = (message: Message) => {
+  const handleEditMessage = (message: IMessage) => {
     if (sender?._id === message.sender._id) {
       setEditMessage(message);
       setMessage(message.content);
@@ -531,11 +534,9 @@ function ChatArea({
   const profileHandler = (recipient: Recipient | null, room: Room | string) => {
     if (recipient?.username) {
       socket?.emit("users:getUserData", { recipientId: recipient._id });
-      // set loading on
       socket?.on("users:getUserDataResponse", (data: Recipient) => {
         setSelectedRecipient(data);
-        // set loading off
-        setOpen(true); // Open the user modal
+        setOpen(true);
       });
     } else if (typeof room === "object") {
       socket?.emit("rooms:getRoomData", room._id);
@@ -584,7 +585,7 @@ function ChatArea({
   };
 
   const [isEditModalOpen, setEditModalOpen] = useState(false);
-  const [foundMessages, setFoundMessages] = useState<Message[]>([]);
+  const [foundMessages, setFoundMessages] = useState<IMessage[]>([]);
 
   const handleEditRoom = (updatedRoom: {
     name: string;
@@ -610,7 +611,7 @@ function ChatArea({
     setSelectedRoom(updatedRoom);
   });
 
-  socket?.on("messages:searchResults", (foundMessages: Message[]) => {
+  socket?.on("messages:searchResults", (foundMessages: IMessage[]) => {
     setFoundMessages(foundMessages);
   });
 
@@ -621,7 +622,7 @@ function ChatArea({
   };
 
   useEffect(() => {
-    const firstPinnedMessage = messages.find((msg: Message) => msg.isPinned);
+    const firstPinnedMessage = messages.find((msg: IMessage) => msg.isPinned);
     setCurrentPinnedMessage(firstPinnedMessage || null);
   }, [messages]);
 
@@ -659,7 +660,7 @@ function ChatArea({
     }
   };
 
-  const handleReplyMessage = (message: Message) => {
+  const handleReplyMessage = (message: IMessage) => {
     setReplyMessage(message);
   };
 
@@ -673,7 +674,7 @@ function ChatArea({
 
   const forwardMessage = (
     room: Room,
-    message: Message,
+    message: IMessage,
     receiverId?: string
   ) => {
     socket?.emit("messages:forwardMessage", {
@@ -904,7 +905,7 @@ function ChatArea({
           <Button variant="outlined" onClick={handleLoadMore}>
             Load More
           </Button>
-          {messages.map((msg: Message) => {
+          {messages.map((msg: IMessage) => {
             // @ts-ignore
             const isAdminOrOwner = room.participants?.some(
               (participant: any) =>

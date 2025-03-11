@@ -60,12 +60,7 @@ export const uploadEvents = (
             }
           : null,
       };
-
-      // io.to(room._id ? room._id : room).emit(
-      //   "fileUpload-respond",
-      //   messageToSend
-      // );
-      io.emit("uploads:fileUploadRespond", messageToSend);
+      io.to(room._id).emit("uploads:fileUploadRespond", messageToSend);
     } catch (error) {
       console.error("Error processing voice message:", error);
       io.emit("error", { message: error });
@@ -114,10 +109,7 @@ export const uploadEvents = (
             }
           : null,
       };
-      io.to(room._id ? room._id : room).emit(
-        "uploads:voiceMessageResponse",
-        messageToSend
-      );
+      io.to(room._id).emit("uploads:voiceMessageResponse", messageToSend);
     } catch (error) {
       console.error("Error processing voice message:", { message: error });
     }

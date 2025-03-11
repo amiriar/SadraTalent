@@ -1,6 +1,6 @@
 import mongoose, { ObjectId, Schema } from "mongoose";
 
-export interface Message {
+export interface IMessage {
   _id?: string;
   tempId?: string;
   sender: Sender;
@@ -30,7 +30,7 @@ export interface ReplyTo {
   voice?: string | IUpload;
   file?: string | IUpload;
   timestamp: Date;
-  $__?: any;
+  // $__?: any;
 }
 
 export interface Sender extends IUser {
@@ -44,7 +44,7 @@ export interface Recipient extends IUser {
   phone?: string;
   stories?: string[];
   lastSeen?: Date;
-  lastMessage?: any;
+  lastMessage?: Partial<IMessage>;
 }
 
 export interface Room {
@@ -61,7 +61,7 @@ export interface Room {
   createdAt: Date;
   isPublic: boolean;
   profile: string | IUpload;
-  lastMessage?: any;
+  lastMessage?: Partial<IMessage>;
 }
 
 export interface IUpload extends Document {

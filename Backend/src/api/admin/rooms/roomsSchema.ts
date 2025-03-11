@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { Message } from "../messages/messagesModel";
+import { RoomTypes } from "@/enum/RoomTypes";
 
 export interface IRoom extends Document {
   profile?: Schema.Types.ObjectId;
@@ -11,11 +12,12 @@ export interface IRoom extends Document {
     role: "member" | "admin" | "owner";
     nickname?: string;
   }>;
+  type: typeof RoomTypes;
   isGroup: boolean;
   isPublic: boolean;
   isDeleted: boolean;
-  // lastMessage?: Message | null;
-  lastMessage: any;
+  lastMessage?: Partial<Message> | null;
+  // lastMessage: any;
 }
 
 interface ParticipantUser {
@@ -41,6 +43,7 @@ const RoomSchema = new Schema<IRoom>(
     bio: { type: String, maxlength: 200 },
     pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
     participants: [ParticipantSchema],
+    type: { type: String, enum: Object.values(RoomTypes), required: true },
     isGroup: { type: Boolean, required: true },
     isPublic: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },

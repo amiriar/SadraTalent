@@ -1,4 +1,5 @@
 import RoomModel from "@/api/admin/rooms/roomsSchema";
+import { RoomTypes } from "@/enum/RoomTypes";
 import crypto from "crypto";
 import * as dotenv from "dotenv";
 
@@ -8,15 +9,14 @@ export const createPublicRooms = async () => {
   const defaultRooms = ["General", "Announcements"];
 
   for (const name of defaultRooms) {
-    // Check if the room already exists
     const roomExists = await RoomModel.findOne({ name: name });
     if (!roomExists) {
-      // Create the room if it doesn't exist
       const newRoom = new RoomModel({
         name,
         participants: [],
         isGroup: true,
         createdAt: new Date(),
+        type: name === "General" ? RoomTypes.Group : RoomTypes.Channel,
       });
       await newRoom.save();
       console.log(`Public room '${name}' created.`);
@@ -26,9 +26,8 @@ export const createPublicRooms = async () => {
   }
 };
 
-// Use a fixed, securely stored encryption key
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY as string, "hex"); // 32-byte key
-const IV_LENGTH = 16; // AES block size for AES-256-CBC
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY as string, "hex");
+const IV_LENGTH = 16;
 
 export function encrypt(text: string): string {
   if (text) {
@@ -36,7 +35,7 @@ export function encrypt(text: string): string {
     const cipher = crypto.createCipheriv("aes-256-cbc", ENCRYPTION_KEY, iv);
     let encrypted = cipher.update(text, "utf8", "hex");
     encrypted += cipher.final("hex");
-    return `${iv.toString("hex")}:${encrypted}`; // Store IV and encrypted text together
+    return `${iv.toString("hex")}:${encrypted}`;
   } else {
     return "";
   }

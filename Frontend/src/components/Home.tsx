@@ -7,7 +7,7 @@ import { FaPlus, FaPlusCircle } from "react-icons/fa";
 import {
   Sender,
   Recipient,
-  Message,
+  IMessage,
   Room,
   IStory,
 } from "../modules/types/types";
@@ -43,18 +43,18 @@ interface VoiceMessageResponse {
 const Home: React.FC = () => {
   const [sender, setSender] = useState<Sender | null>(null);
   const [recipient, setRecipient] = useState<Recipient | null>(null);
-  const [pinMessage, setPinMessage] = useState<Message | null>(null);
+  const [pinMessage, setPinMessage] = useState<IMessage | null>(null);
   const [message, setMessage] = useState<string>("");
   const [publicName, setPublicName] = useState<string>("");
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<IMessage[]>([]);
   const [socket, setSocket] = useState<typeof Socket | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Recipient[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [room, setRoom] = useState<string | Room>("");
   const [shownRoomName, setShownRoomName] = useState<string>("No room joined");
   const [offlineUsers, setOfflineUsers] = useState<Recipient[]>([]);
-  const [editMessage, setEditMessage] = useState<Message | null>(null);
-  const [replyMessage, setReplyMessage] = useState<Message | null>(null);
+  const [editMessage, setEditMessage] = useState<IMessage | null>(null);
+  const [replyMessage, setReplyMessage] = useState<IMessage | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
   const [isStoryModalOpen, setIsStoryModalOpen] = useState<boolean>(false);
   const [isCretaeStoryModalOpen, setIsCreateStoryModalOpen] =
@@ -275,7 +275,7 @@ const Home: React.FC = () => {
     socket?.emit("messages:getHistory", { roomName: formattedRoom });
     setMessages([]);
 
-    socket?.on("messages:sendHistory", (messageData: Message[]) => {
+    socket?.on("messages:sendHistory", (messageData: IMessage[]) => {
       setMessages((prevMessages) => [...messageData, ...prevMessages]);
     });
 
@@ -309,7 +309,7 @@ const Home: React.FC = () => {
       }
     );
 
-    const handleIncomingMessage = (messageData: Message) => {
+    const handleIncomingMessage = (messageData: IMessage) => {
       setMessages((prevMessages) => {
         const currentRoomId = typeof room === "string" ? room : room?._id;
         const messageRoomId = messageData.room;
@@ -438,7 +438,7 @@ const Home: React.FC = () => {
           (msg) => msg._id === messageData._id
         );
         if (!messageExists) {
-          return [...prevMessages, messageData as Message];
+          return [...prevMessages, messageData as IMessage];
         }
         return prevMessages;
       });
@@ -446,11 +446,11 @@ const Home: React.FC = () => {
 
     socket?.emit("stories:getStories", { userId: sender?._id });
 
-    socket?.on("uploads:fileUploadRespond", (messageData: Message) => {
+    socket?.on("uploads:fileUploadRespond", (messageData: IMessage) => {
       setMessages((prevMessages) => [...prevMessages, messageData]);
     });
 
-    socket?.on("stories:editMessageResponse", (messageData: Message) => {
+    socket?.on("stories:editMessageResponse", (messageData: IMessage) => {
       setEditMessage(null);
 
       setMessages((prevMessages) =>
@@ -460,7 +460,7 @@ const Home: React.FC = () => {
       );
     });
 
-    socket?.on("messages:forwardMessageResponse", (messageData: Message) => {
+    socket?.on("messages:forwardMessageResponse", (messageData: IMessage) => {
       setMessages((prevMessages) => {
         const messageExists = prevMessages.some(
           (msg) => msg._id === messageData._id
@@ -850,6 +850,7 @@ const Home: React.FC = () => {
       <CreateStoryModal
         open={isCretaeStoryModalOpen}
         onClose={storyHandler}
+        // @ts-ignore
         currentStory={currentStory}
         setCurrentStory={setCurrentStory}
         addStoryHandler={addStoryHandler}
@@ -860,7 +861,6 @@ const Home: React.FC = () => {
         onClose={() => setIsStoryModalOpen(false)}
         open={isStoryModalOpen}
         // @ts-ignore
-
         user={currentStory ?? null}
         senderId={sender?._id}
         deleteHandler={deleteHandler}

@@ -475,7 +475,6 @@ export const messagesEvents = (
 
       const lowerCaseWord = word.toLowerCase();
 
-      // Removed pagination and maxCount
       const messages = await MessageModel.find({
         room,
         isDeleted: false,
@@ -493,24 +492,23 @@ export const messagesEvents = (
         })
         .lean();
 
-      // Check if there are no messages
       if (messages.length === 0) {
         socket.emit("messages:searchResults", []);
         return;
       }
 
-      // Find and push matching messages
       const foundMessages = [];
 
       for (const message of messages) {
         const decryptedContent = decrypt(message.content);
 
         let decryptedReplyContent = null;
+        // @ts-ignore
         if (message.replyTo?.content) {
+          // @ts-ignore
           decryptedReplyContent = decrypt(message.replyTo.content);
         }
 
-        // If the message or its reply contains the word, add it to the results
         if (
           decryptedContent.toLowerCase().includes(lowerCaseWord) ||
           (decryptedReplyContent &&
@@ -520,13 +518,13 @@ export const messagesEvents = (
             ...message,
             content: decryptedContent,
             replyTo: message.replyTo
-              ? { ...message.replyTo, content: decryptedReplyContent }
+              ? // @ts-ignore
+                { ...message.replyTo, content: decryptedReplyContent }
               : null,
           });
         }
       }
 
-      // Emit the found messages
       socket.emit("messages:searchResults", foundMessages.reverse());
     } catch (error) {
       console.error("Error searching messages:", error);

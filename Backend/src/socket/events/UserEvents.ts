@@ -2,6 +2,7 @@ import MessageModel from "@/api/admin/messages/messagesSchema";
 import RoomModel from "@/api/admin/rooms/roomsSchema";
 import UserModel from "@/api/admin/user/userSchema";
 import { decrypt } from "@/common/helper/Helper";
+import { Status } from "@/common/utils/enum";
 import { DefaultRoomNames } from "@/enum/PublicRooms";
 import { Socket, Server } from "socket.io";
 
@@ -21,9 +22,11 @@ export const userEvents = (
         return socket.emit("error", { message: "User not found" });
       }
 
+      user.status = Status.online;
+      user.save();
+
       console.log(`✅ User ${user.username} logged in`);
 
-      // Store user in onlineUsers map
       onlineUsers.set(userId, {
         _id: userId,
         socketId: socket.id,
@@ -32,15 +35,13 @@ export const userEvents = (
         role: user.role,
       });
 
-      // Fetch public rooms (General & Announcements)
-      const publicRooms = await RoomModel.find({
-        name: { $in: ["General", "Announcements"] },
+      const allRooms = await RoomModel.find({
         isDeleted: false,
       })
         .select("_id name")
         .lean();
 
-      for (const room of publicRooms) {
+      for (const room of allRooms) {
         socket.join(room._id.toString());
 
         const isUserAlreadyInRoom = await RoomModel.findOne({
@@ -59,17 +60,16 @@ export const userEvents = (
         console.log(`✅ User ${user.username} joined ${room.name}`);
       }
 
-      // Fetch all rooms the user is in
       const userRooms = await RoomModel.find({
         $or: [{ isPublic: true }, { "participants.user": user._id }],
         isDeleted: false,
       })
-        .select("_id name isGroup createdAt participants bio")
+        .select("_id name isGroup createdAt participants bio type")
         .populate("participants.user", "username profile phoneNumber")
         .lean();
 
-      // Fetch and attach the last message for each room
       for (const room of userRooms) {
+        socket.join(room._id.toString());
         const lastMessage = await MessageModel.findOne({
           room: room._id,
           isDeleted: false,
@@ -83,19 +83,16 @@ export const userEvents = (
         if (lastMessage) {
           lastMessage.content = decrypt(lastMessage.content);
         }
+
+        // @ts-ignore
         room.lastMessage = lastMessage || null;
       }
 
-      // Join all rooms
-      userRooms.forEach((room) => {
-        socket.join(room._id.toString());
-      });
-
-      // Notify other users of online status
       await sendOnlineUsers();
 
-      // Send rooms with the last message attached directly to each room object
-      socket.emit("users:userRooms", userRooms);
+      socket.join(userId);
+
+      io.to([...socket.rooms]).emit("users:userRooms", userRooms);
     } catch (err) {
       console.error("❌ Error logging in user:", err);
       socket.emit("error", { message: "Login failed" });
@@ -108,7 +105,10 @@ export const userEvents = (
     }
 
     const lastSeen = new Date();
-    await UserModel.updateOne({ _id: userId }, { lastSeen });
+    const t = await UserModel.updateOne(
+      { _id: userId },
+      { lastSeen, status: Status.offline }
+    );
 
     console.log(`❌ User ${userId} disconnected`);
 
@@ -123,7 +123,6 @@ export const userEvents = (
       $or: [
         { sender: userId1, receiver: userId2 },
         { sender: userId2, receiver: userId1 },
-        // { room: isSaveMessage && roomName },
       ],
       isDeleted: false,
       deletedBy: { $not: { $elemMatch: { $eq: userId } } },
@@ -149,7 +148,7 @@ export const userEvents = (
         })
       );
 
-      io.emit("users:onlineUsers", onlineUsersArray);
+      io.to([...socket.rooms]).emit("users:onlineUsers", onlineUsersArray);
       await sendOfflineUsers();
     } catch (error) {
       console.error("❌ Error sending online users:", error);
@@ -168,18 +167,17 @@ export const userEvents = (
           const lastMessage = await getLastMessageBetweenUsers(
             userId,
             user._id
-          ); // userId is the logged-in user
+          );
           return { ...user.toObject(), lastMessage };
         })
     );
 
-    io.emit("users:offlineUsers", offlineUsersArray);
+    io.to([...socket.rooms]).emit("users:offlineUsers", offlineUsersArray);
   };
 
+  // unused
   socket.on("users:getUsers", async () => {
-    const allUsers = await UserModel.find(
-      // for now its gonna be all users, later we will filter by contacts
-      {},
+    const allUsers = await UserModel.find().select(
       "_id username profile lastSeen bio lastname firstname email stories role"
     );
 
@@ -189,6 +187,7 @@ export const userEvents = (
 
     io.emit("users:getUsersResponse", allUsers);
   });
+  // unused
 
   socket.on("users:getUserData", async ({ recipientId }) => {
     const recipient = await UserModel.findById(recipientId, {
@@ -198,6 +197,6 @@ export const userEvents = (
       refreshToken: 0,
       lastDateIn: 0,
     });
-    io.emit("users:getUserDataResponse", recipient);
+    io.to(userId).emit("users:getUserDataResponse", recipient);
   });
 };

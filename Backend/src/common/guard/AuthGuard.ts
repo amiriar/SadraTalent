@@ -51,7 +51,7 @@ export const AuthGuard = async (
       process.env.JWT_SECRET as string
     ) as { _id: string; role: string };
 
-    // Optionally check if user exists in the database
+    // check if user exists in the database
     // const user = await UserModel.findById(decodedToken._id);
     // if (!user) {
     //   return handleResponse(res, StatusCodes.UNAUTHORIZED, "Unauthorized: Invalid token");
