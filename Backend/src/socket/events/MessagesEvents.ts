@@ -40,13 +40,11 @@ export const messagesEvents = (
           message: result,
         });
       } else {
-        socket
-          .to(userId)
-          .emit("error", { message: "Failed to pin the message" });
+        io.to(userId).emit("error", { message: "Failed to pin the message" });
       }
     } catch (error) {
       console.error("Error pinning message:", error);
-      socket.to(userId).emit("error", { message: "Failed to pin the message" });
+      io.to(userId).emit("error", { message: "Failed to pin the message" });
     }
   });
 
@@ -64,9 +62,7 @@ export const messagesEvents = (
           message: result,
         });
       } else {
-        socket
-          .to(userId)
-          .emit("error", { message: "Failed to unpin the message" });
+        io.to(userId).emit("error", { message: "Failed to unpin the message" });
       }
     } catch (error) {
       console.error("Error unpinning message:", error);
@@ -203,7 +199,7 @@ export const messagesEvents = (
       const message = await MessageModel.findById(messageId).lean();
 
       if (!message) {
-        socket.to(userId).emit("error", { message: "Message not found" });
+        io.to(userId).emit("error", { message: "Message not found" });
         return;
       }
 
@@ -235,7 +231,7 @@ export const messagesEvents = (
       );
     } catch (error) {
       console.error("Error forwarding message:", error);
-      socket.to(userId).emit("error", { message: "Failed to forward message" });
+      io.to(userId).emit("error", { message: "Failed to forward message" });
     }
   });
 
@@ -246,7 +242,7 @@ export const messagesEvents = (
       const message = await MessageModel.findById(messageId).lean();
 
       if (!message) {
-        socket.to(userId).emit("error", { message: "message not found" });
+        io.to(userId).emit("error", { message: "message not found" });
       } else {
         message.receiver = receiverId;
 
@@ -315,7 +311,7 @@ export const messagesEvents = (
           }
         }
       } catch (err: any) {
-        socket.to(userId).emit("error", {
+        io.to(userId).emit("error", {
           message: err.message,
         });
       }
@@ -463,12 +459,10 @@ export const messagesEvents = (
           };
         });
 
-        socket
-          .to(roomName)
-          .emit("messages:sendHistory", decryptedHistory?.reverse());
+        io.to(userId).emit("messages:sendHistory", decryptedHistory?.reverse());
       } catch (error) {
         console.error("Error fetching chat history:", error);
-        socket.emit("messages:sendHistory", []);
+        io.emit("messages:sendHistory", []);
       }
     }
   );
@@ -476,7 +470,7 @@ export const messagesEvents = (
   socket.on("messages:search", async ({ word, room }) => {
     try {
       if (!word || !room) {
-        socket.emit("messages:searchResults", []);
+        io.emit("messages:searchResults", []);
         return;
       }
 
@@ -505,7 +499,7 @@ export const messagesEvents = (
         .lean();
 
       if (messages.length === 0) {
-        socket.emit("messages:searchResults", []);
+        io.emit("messages:searchResults", []);
         return;
       }
 
@@ -542,7 +536,7 @@ export const messagesEvents = (
         .emit("messages:searchResults", foundMessages.reverse());
     } catch (error) {
       console.error("Error searching messages:", error);
-      socket.emit("messages:searchResults", []);
+      io.emit("messages:searchResults", []);
     }
   });
 };

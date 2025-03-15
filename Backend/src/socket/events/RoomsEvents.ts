@@ -64,9 +64,9 @@ export const roomsEvents = (
         socket.to([userId, roomId]).emit("rooms:leaveRoomResponse", rooms);
       } catch (error: any) {
         console.error("Error leaving room:", error);
-        socket
-          .to(userId)
-          .emit("error", { message: `${error.message}, room: ${roomId}` });
+        io.to(userId).emit("error", {
+          message: `${error.message}, room: ${roomId}`,
+        });
       }
     }
   );
@@ -88,13 +88,13 @@ export const roomsEvents = (
       ).lean();
 
       if (!newRoom) {
-        return socket.to(userId).emit("error", { message: "Room not found" });
+        return io.to(userId).emit("error", { message: "Room not found" });
       }
 
       io.to(roomId).emit("rooms:editRoomResponse", newRoom);
     } catch (error) {
       console.error("Error editing room:", error);
-      socket.to(userId).emit("error", { message: "Failed to edit the room" });
+      io.to(userId).emit("error", { message: "Failed to edit the room" });
     }
   });
 
@@ -110,7 +110,7 @@ export const roomsEvents = (
           .lean();
 
         if (!room) {
-          socket.to(userId).emit("error", { message: "Room not found" });
+          io.to(userId).emit("error", { message: "Room not found" });
           return;
         }
 
@@ -119,7 +119,7 @@ export const roomsEvents = (
         );
 
         if (!sender || (sender.role !== "admin" && sender.role !== "owner")) {
-          socket.to(userId).emit("error", {
+          io.to(userId).emit("error", {
             message:
               "Permission denied. Only admins or owners can remove users.",
           });
@@ -156,7 +156,7 @@ export const roomsEvents = (
 
         console.log(`User ${userId} removed from room ${roomId}`);
       } catch (error: any) {
-        socket.to(userId).emit("error", { message: error.message });
+        io.to(userId).emit("error", { message: error.message });
         console.log("Error removing user:", error);
       }
     }
@@ -184,7 +184,7 @@ export const roomsEvents = (
           .lean();
 
         if (!room) {
-          socket.to(userId).emit("error", { message: "Room not found" });
+          io.to(userId).emit("error", { message: "Room not found" });
           return;
         }
 
@@ -193,7 +193,7 @@ export const roomsEvents = (
         );
 
         if (!sender || (sender.role !== "admin" && sender.role !== "owner")) {
-          socket.to(userId).emit("error", {
+          io.to(userId).emit("error", {
             message:
               "Permission denied. Only admins or owners can promote users.",
           });
@@ -242,7 +242,7 @@ export const roomsEvents = (
 
         console.log(`User ${userId} promoted to ${newRole} in room ${roomId}`);
       } catch (error: any) {
-        socket.to(userId).emit("error", { message: error.message });
+        io.to(userId).emit("error", { message: error.message });
         console.log("Error promoting user:", error);
       }
     }
@@ -254,9 +254,9 @@ export const roomsEvents = (
       "username profile phoneNumber"
     );
     if (room) {
-      socket.to(userId).emit("rooms:getRoomDataResponse", room);
+      io.to(userId).emit("rooms:getRoomDataResponse", room);
     } else {
-      socket.to(userId).emit("error", { message: "Room Not Found" });
+      io.to(userId).emit("error", { message: "Room Not Found" });
     }
   });
 
@@ -293,7 +293,7 @@ export const roomsEvents = (
       const room = await RoomModel.findById(roomId, { isDeleted: false });
 
       if (!room) {
-        return socket.to(userId).emit("error", {
+        return io.to(userId).emit("error", {
           message: "Room Not Found",
         });
       }
@@ -303,7 +303,7 @@ export const roomsEvents = (
       );
 
       if (!participant) {
-        return socket.to(userId).emit("error", {
+        return io.to(userId).emit("error", {
           message: "User is not a participant in the room",
         });
       }

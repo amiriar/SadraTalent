@@ -63,7 +63,7 @@ export const uploadEvents = (
       io.to(room._id).emit("uploads:fileUploadRespond", messageToSend);
     } catch (error) {
       console.error("Error processing voice message:", error);
-      socket.to(userId).emit("error", { message: error });
+      io.to(userId).emit("error", { message: error });
     }
   });
 

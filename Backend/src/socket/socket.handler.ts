@@ -23,15 +23,13 @@ export const handleSocketConnections = (io: Server) => {
     createPublicRooms();
 
     const eventHandlers = [
-      userEvents, // ✅
-      chatEvents, // ✅
-      messagesEvents, // ✅
-      roomsEvents, // ✅
-      storiesEvents, // ✅
-      uploadEvents, // ✅
+      userEvents,
+      chatEvents,
+      messagesEvents,
+      roomsEvents,
+      storiesEvents,
+      uploadEvents,
     ];
-
-    // remaining: error to userid and change rooms
 
     eventHandlers.forEach((handler) =>
       handler(socket, io, socket.id, userId, onlineUsers)

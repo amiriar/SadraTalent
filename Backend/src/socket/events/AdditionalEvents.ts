@@ -23,7 +23,7 @@ export const additionalEvents = (socket: Socket, io: Server) => {
       io.emit("additional:metadataReaderResponse", { metadata });
     } catch (error) {
       console.error("Error fetching metadata:", error);
-      socket.to(userId).emit("error", {
+      io.to(userId).emit("error", {
         message: "Failed to fetch metadata",
       });
     }

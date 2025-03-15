@@ -48,10 +48,10 @@ export const storiesEvents = (
             })),
         }));
 
-      socket.emit("stories:getStoriesResponse", response);
+      io.emit("stories:getStoriesResponse", response);
     } catch (error) {
       console.error("Error fetching user stories:", error);
-      socket.to(userId).emit("error", { message: "Failed to fetch stories" });
+      io.to(userId).emit("error", { message: "Failed to fetch stories" });
     }
   });
 
@@ -81,13 +81,13 @@ export const storiesEvents = (
           (user) => user?._id?.toString() !== userId
         );
 
-        socket.to(userId).emit("stories:usersSeenStoryResponse", {
+        io.to(userId).emit("stories:usersSeenStoryResponse", {
           seenBy: filteredSeenBy,
           likes: filteredLikes,
         });
       } catch (error) {
         console.error("Error fetching user stories:", error);
-        socket.to(userId).emit("error", { message: "Failed to fetch stories" });
+        io.to(userId).emit("error", { message: "Failed to fetch stories" });
       }
     }
   );
@@ -143,7 +143,7 @@ export const storiesEvents = (
           .emit("stories:getStoriesResponse", response);
       } catch (error) {
         console.error("Error adding story:", error);
-        socket.to(userId).emit("error", { message: "Failed to add story" });
+        io.to(userId).emit("error", { message: "Failed to add story" });
       }
     }
   );
@@ -178,9 +178,7 @@ export const storiesEvents = (
         }
       } catch (error) {
         console.error("Error toggling like story:", error);
-        socket
-          .to(userId)
-          .emit("error", { message: "Failed to toggle like story" });
+        io.to(userId).emit("error", { message: "Failed to toggle like story" });
       }
     }
   );
@@ -213,7 +211,7 @@ export const storiesEvents = (
           .emit("stories:shareStoryResponse", populatedMessage);
       } catch (error) {
         console.error("Error sharing story:", error);
-        socket.to(userId).emit("error", { message: "Failed to share story" });
+        io.to(userId).emit("error", { message: "Failed to share story" });
       }
     }
   );
@@ -229,11 +227,11 @@ export const storiesEvents = (
           message: "Story deleted successfully",
         });
       } else {
-        socket.to(userId).emit("error", { message: "Failed to delete story" });
+        io.to(userId).emit("error", { message: "Failed to delete story" });
       }
     } catch (error) {
       console.error("Error deleting story:", error);
-      socket.to(userId).emit("error", { message: "Failed to delete story" });
+      io.to(userId).emit("error", { message: "Failed to delete story" });
     }
   });
 };
