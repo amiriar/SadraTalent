@@ -1590,18 +1590,20 @@ function ChatArea({
         sender={sender}
       />
 
-      <SupportChatModal
-        open={supportModalOpen}
-        setOpen={setSupportModalOpen}
-        messages={messages}
-        sender={sender}
-        onlineUsers={onlineUsers}
-        room={room}
-        socket={socket}
-        publicName={publicName}
-        replyMessage={replyMessage}
-        setReplyMessage={setReplyMessage}
-      />
+      {supportModalOpen && (
+        <SupportChatModal
+          open={supportModalOpen}
+          setOpen={setSupportModalOpen}
+          messages={messages}
+          sender={sender}
+          onlineUsers={onlineUsers}
+          room={room}
+          socket={socket}
+          publicName={publicName}
+          replyMessage={replyMessage}
+          setReplyMessage={setReplyMessage}
+        />
+      )}
     </div>
   );
 }

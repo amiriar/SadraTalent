@@ -1,4 +1,4 @@
-import MessageModel from "@/api/admin/messages/messagesSchema";
+import MessageModel, { IMessage } from "@/api/admin/messages/messagesSchema";
 import UserModel from "@/api/admin/user/userSchema";
 import { decrypt, encrypt } from "@/common/helper/Helper";
 import mongoose from "mongoose";
@@ -70,13 +70,10 @@ export const messagesEvents = (
     }
   });
 
-  socket.on("messages:editMessage", async (data) => {
-    const { messageData } = data;
-    const encryptedContent = encrypt(messageData.content);
-
+  socket.on("messages:editMessage", async (messageData: IMessage) => {
     const newMessage = await MessageModel.findOneAndUpdate(
       { _id: messageData._id },
-      { isEdited: true, content: encryptedContent },
+      { isEdited: true, content: encrypt(messageData.content) },
       { new: true }
     )
       .populate("sender", "_id username profile")
@@ -89,6 +86,7 @@ export const messagesEvents = (
       });
 
     let replyToContent = null;
+
     if (newMessage?.replyTo) {
       // @ts-ignore
       const decryptedReplyContent = decrypt(newMessage.replyTo.content);
@@ -107,7 +105,9 @@ export const messagesEvents = (
         : null,
     };
 
-    socket.emit("messages:editMessageResponse", decryptedMessage);
+    socket
+      .to([userId, messageData.room])
+      .emit("messages:editMessageResponse", decryptedMessage);
   });
 
   socket.on("messages:sendMessage", async (messageData) => {
@@ -181,7 +181,10 @@ export const messagesEvents = (
         updatedAt: newMessage.updateAt,
       };
 
-      io.emit("messages:sendMessage", messageToSend);
+      io.to([newMessage.room, userId]).emit(
+        "messages:sendMessage",
+        messageToSend
+      );
     } catch (error) {
       console.error("Error sending message:", { messgae: error });
     }
@@ -191,7 +194,6 @@ export const messagesEvents = (
     try {
       const { messageId, room, receiverId } = messageData;
 
-      // Get plain object instead of document instance
       const message = await MessageModel.findById(messageId).lean();
 
       if (!message) {
@@ -207,23 +209,20 @@ export const messagesEvents = (
         finalRoom = room;
       }
 
-      // Create new message with modified properties
       const forwardedMessage = await MessageModel.create({
         ...message,
         room: finalRoom,
         receiver: receiverId || message.receiver,
         isForwarded: true,
-        createdAt: new Date(), // Reset timestamp
-        _id: new mongoose.Types.ObjectId(), // Generate new ID
+        createdAt: new Date(),
+        _id: new mongoose.Types.ObjectId(),
       });
 
-      // Decrypt content for response
       const decryptedMessage = {
         ...forwardedMessage.toObject(),
         content: decrypt(forwardedMessage.content),
       };
 
-      // Emit only to the target room
       io.to(finalRoom).emit(
         "messages:forwardMessageResponse",
         decryptedMessage
@@ -236,27 +235,25 @@ export const messagesEvents = (
 
   socket.on("messages:saveMessage", async (messageData) => {
     try {
-      const { receiverId, message } = messageData;
+      const { receiverId, messageId } = messageData;
 
-      if (message.sender) {
-        delete message.sender.profile;
-        delete message.sender.username;
-        delete message.sender.phone;
+      const message = await MessageModel.findById(messageId).lean();
+
+      if (!message) {
+        socket.emit("error", { message: "message not found" });
+      } else {
+        message.receiver = receiverId;
+
+        message.room = receiverId + "-" + receiverId;
+
+        message.status = "seen";
+
+        const savedMessage = await MessageModel.create(message);
+
+        io.to(userId).emit("messages:saveMessageResponse", {
+          data: savedMessage,
+        });
       }
-      if (message._id) delete message._id;
-      if (message.createdAt) delete message.createdAt;
-
-      message.recipient = receiverId;
-
-      message.room = receiverId + "-" + receiverId;
-
-      message.status = "seen";
-
-      const savedMessage = await MessageModel.create(message);
-
-      io.emit("messages:saveMessageResponse", {
-        data: savedMessage,
-      });
     } catch (error) {
       console.error("Error sending message:", { message: error });
     }
@@ -264,7 +261,15 @@ export const messagesEvents = (
 
   socket.on(
     "messages:deleteMessage",
-    async ({ messageId, deleteForEveryone }) => {
+    async ({
+      messageId,
+      deleteForEveryone,
+      roomId,
+    }: {
+      messageId: string;
+      deleteForEveryone: boolean;
+      roomId: string;
+    }) => {
       try {
         if (deleteForEveryone) {
           const result = await MessageModel.updateOne(
@@ -273,13 +278,13 @@ export const messagesEvents = (
           );
 
           if (result.modifiedCount > 0) {
-            io.emit("messages:deleteMessageResponse", {
+            io.to(roomId).emit("messages:deleteMessageResponse", {
               success: true,
               messageId,
               deletedByEveryone: true,
             });
           } else {
-            io.emit("messages:deleteMessageResponse", {
+            io.to(roomId).emit("messages:deleteMessageResponse", {
               success: false,
               error: "Message not found or already deleted for everyone.",
             });
@@ -291,22 +296,21 @@ export const messagesEvents = (
           );
 
           if (result.modifiedCount > 0) {
-            io.emit("messages:deleteMessageResponse", {
+            io.to(roomId).emit("messages:deleteMessageResponse", {
               success: true,
               messageId,
               deletedBy: userId,
             });
           } else {
-            io.emit("messages:deleteMessageResponse", {
+            io.to(roomId).emit("messages:deleteMessageResponse", {
               success: false,
               error: "Message not found or already deleted for this user.",
             });
           }
         }
       } catch (err: any) {
-        io.emit("messages:deleteMessageResponse", {
-          success: false,
-          error: err.message,
+        io.emit("error", {
+          message: err.message,
         });
       }
     }
@@ -453,7 +457,9 @@ export const messagesEvents = (
           };
         });
 
-        socket.emit("messages:sendHistory", decryptedHistory?.reverse());
+        socket
+          .to(roomName)
+          .emit("messages:sendHistory", decryptedHistory?.reverse());
       } catch (error) {
         console.error("Error fetching chat history:", error);
         socket.emit("messages:sendHistory", []);
@@ -525,7 +531,9 @@ export const messagesEvents = (
         }
       }
 
-      socket.emit("messages:searchResults", foundMessages.reverse());
+      socket
+        .to(typeof room === "string" ? room : room._id)
+        .emit("messages:searchResults", foundMessages.reverse());
     } catch (error) {
       console.error("Error searching messages:", error);
       socket.emit("messages:searchResults", []);

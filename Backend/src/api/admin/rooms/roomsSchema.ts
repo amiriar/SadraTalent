@@ -3,6 +3,7 @@ import { Message } from "../messages/messagesModel";
 import { RoomTypes } from "@/enum/RoomTypes";
 
 export interface IRoom extends Document {
+  _id: Types.ObjectId;
   profile?: Schema.Types.ObjectId;
   name: string;
   bio?: string;

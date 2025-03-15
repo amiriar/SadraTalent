@@ -9,9 +9,10 @@ export interface IStory extends Document {
   isDeleted: boolean;
   expireAt: Date;
   seenBy: Types.ObjectId[];
-  likes: Array<
-    Types.ObjectId | { _id: Types.ObjectId; username: string; profile?: string }
-  >;
+  likes: Types.ObjectId[];
+  // likes: Array<
+  //   Types.ObjectId | { _id: Types.ObjectId; username: string; profile?: string }
+  // >;
   isAccepted: boolean;
 }
 
@@ -26,19 +27,20 @@ const StorySchema = new Schema<IStory>(
     isAccepted: { type: Boolean, default: true }, // Default: true; change if needed
     expireAt: { type: Date, required: true },
     seenBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
-    likes: [
-      {
-        type: Schema.Types.Mixed,
-        validate: {
-          validator: (value: any) =>
-            mongoose.Types.ObjectId.isValid(value) ||
-            (typeof value === "object" &&
-              mongoose.Types.ObjectId.isValid(value._id) &&
-              typeof value.username === "string"),
-          message: "Invalid like format.",
-        },
-      },
-    ],
+    likes: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    // likes: [
+    //   {
+    //     type: Schema.Types.Mixed,
+    //     validate: {
+    //       validator: (value: any) =>
+    //         mongoose.Types.ObjectId.isValid(value) ||
+    //         (typeof value === "object" &&
+    //           mongoose.Types.ObjectId.isValid(value._id) &&
+    //           typeof value.username === "string"),
+    //       message: "Invalid like format.",
+    //     },
+    //   },
+    // ],
   },
   { timestamps: true }
 );

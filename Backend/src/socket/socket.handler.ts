@@ -25,11 +25,13 @@ export const handleSocketConnections = (io: Server) => {
     const eventHandlers = [
       userEvents, // ✅
       chatEvents, // ✅
-      messagesEvents,
-      roomsEvents,
-      storiesEvents,
+      messagesEvents, // ✅
+      roomsEvents, // ✅
+      storiesEvents, // ✅
       uploadEvents, // ✅
     ];
+
+    // remaining: error to userid and change rooms
 
     eventHandlers.forEach((handler) =>
       handler(socket, io, socket.id, userId, onlineUsers)
@@ -1216,6 +1218,5 @@ export const handleSocketConnections = (io: Server) => {
     //     });
     //   }
     // });
-  
   });
 };

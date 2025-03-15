@@ -1,5 +1,6 @@
 import { Roles, Status } from "@/common/utils/enum";
 import mongoose, { Schema, model, Document, Types } from "mongoose";
+import { IStory } from "../stories/storiesSchema";
 
 export interface IUser extends Document {
   _id: string;
@@ -17,7 +18,7 @@ export interface IUser extends Document {
   otpExpire?: Date | null;
   status?: Status;
   lastSeen?: Date;
-  stories: Types.ObjectId | null;
+  stories: IStory[] | Types.ObjectId[] | null;
   refreshToken?: string | null;
   refreshTokenExpires?: Date | null;
   customStatus: string;

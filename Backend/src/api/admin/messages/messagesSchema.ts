@@ -21,7 +21,7 @@ export interface IMessage extends Document {
   isDeleted: boolean;
   isForwarded: boolean;
   isDeletedForMe: boolean;
-  replyTo: ObjectId | string;
+  replyTo: ObjectId | string | Partial<IMessage>;
   forwardedFrom?: ObjectId | string;
   deletedBy?: ObjectId | string;
   storyId?: ObjectId | string;
