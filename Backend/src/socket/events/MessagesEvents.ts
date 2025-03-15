@@ -40,11 +40,13 @@ export const messagesEvents = (
           message: result,
         });
       } else {
-        socket.emit("error", { message: "Failed to pin the message" });
+        socket
+          .to(userId)
+          .emit("error", { message: "Failed to pin the message" });
       }
     } catch (error) {
       console.error("Error pinning message:", error);
-      socket.emit("error", { message: "Failed to pin the message" });
+      socket.to(userId).emit("error", { message: "Failed to pin the message" });
     }
   });
 
@@ -62,11 +64,15 @@ export const messagesEvents = (
           message: result,
         });
       } else {
-        socket.emit("error", { message: "Failed to unpin the message" });
+        socket
+          .to(userId)
+          .emit("error", { message: "Failed to unpin the message" });
       }
     } catch (error) {
       console.error("Error unpinning message:", error);
-      socket.emit("error", { message: "Failed to unpin the message" });
+      socket
+        .to(userId)
+        .emit("error", { message: "Failed to unpin the message" });
     }
   });
 
@@ -197,7 +203,7 @@ export const messagesEvents = (
       const message = await MessageModel.findById(messageId).lean();
 
       if (!message) {
-        socket.emit("error", { message: "Message not found" });
+        socket.to(userId).emit("error", { message: "Message not found" });
         return;
       }
 
@@ -229,7 +235,7 @@ export const messagesEvents = (
       );
     } catch (error) {
       console.error("Error forwarding message:", error);
-      socket.emit("error", { message: "Failed to forward message" });
+      socket.to(userId).emit("error", { message: "Failed to forward message" });
     }
   });
 
@@ -240,7 +246,7 @@ export const messagesEvents = (
       const message = await MessageModel.findById(messageId).lean();
 
       if (!message) {
-        socket.emit("error", { message: "message not found" });
+        socket.to(userId).emit("error", { message: "message not found" });
       } else {
         message.receiver = receiverId;
 
@@ -309,7 +315,7 @@ export const messagesEvents = (
           }
         }
       } catch (err: any) {
-        io.emit("error", {
+        socket.to(userId).emit("error", {
           message: err.message,
         });
       }

@@ -51,7 +51,7 @@ export const storiesEvents = (
       socket.emit("stories:getStoriesResponse", response);
     } catch (error) {
       console.error("Error fetching user stories:", error);
-      socket.emit("error", { message: "Failed to fetch stories" });
+      socket.to(userId).emit("error", { message: "Failed to fetch stories" });
     }
   });
 
@@ -87,7 +87,7 @@ export const storiesEvents = (
         });
       } catch (error) {
         console.error("Error fetching user stories:", error);
-        socket.emit("error", { message: "Failed to fetch stories" });
+        socket.to(userId).emit("error", { message: "Failed to fetch stories" });
       }
     }
   );
@@ -143,7 +143,7 @@ export const storiesEvents = (
           .emit("stories:getStoriesResponse", response);
       } catch (error) {
         console.error("Error adding story:", error);
-        socket.emit("error", { message: "Failed to add story" });
+        socket.to(userId).emit("error", { message: "Failed to add story" });
       }
     }
   );
@@ -155,7 +155,9 @@ export const storiesEvents = (
       });
     } catch (error) {
       console.error("Error marking story as seen:", error);
-      socket.emit("error", { message: "Failed to mark story as seen" });
+      socket
+        .to(userId)
+        .emit("error", { message: "Failed to mark story as seen" });
     }
   });
 
@@ -176,7 +178,9 @@ export const storiesEvents = (
         }
       } catch (error) {
         console.error("Error toggling like story:", error);
-        socket.emit("error", { message: "Failed to toggle like story" });
+        socket
+          .to(userId)
+          .emit("error", { message: "Failed to toggle like story" });
       }
     }
   );
@@ -209,7 +213,7 @@ export const storiesEvents = (
           .emit("stories:shareStoryResponse", populatedMessage);
       } catch (error) {
         console.error("Error sharing story:", error);
-        socket.emit("error", { message: "Failed to share story" });
+        socket.to(userId).emit("error", { message: "Failed to share story" });
       }
     }
   );
@@ -225,11 +229,11 @@ export const storiesEvents = (
           message: "Story deleted successfully",
         });
       } else {
-        socket.emit("error", { message: "Failed to delete story" });
+        socket.to(userId).emit("error", { message: "Failed to delete story" });
       }
     } catch (error) {
       console.error("Error deleting story:", error);
-      socket.emit("error", { message: "Failed to delete story" });
+      socket.to(userId).emit("error", { message: "Failed to delete story" });
     }
   });
 };

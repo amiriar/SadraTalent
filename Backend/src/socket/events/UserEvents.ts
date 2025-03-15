@@ -19,7 +19,7 @@ export const userEvents = (
         "_id username profile role"
       );
       if (!user) {
-        return socket.emit("error", { message: "User not found" });
+        return socket.to(userId).emit("error", { message: "User not found" });
       }
 
       user.status = Status.online;
@@ -95,7 +95,7 @@ export const userEvents = (
       io.to([...socket.rooms]).emit("users:userRooms", userRooms);
     } catch (err) {
       console.error("❌ Error logging in user:", err);
-      socket.emit("error", { message: "Login failed" });
+      socket.to(userId).emit("error", { message: "Login failed" });
     }
   });
 

@@ -2,10 +2,7 @@ import UserModel from "@/api/admin/user/userSchema";
 import * as Cheerio from "cheerio";
 import { Socket, Server } from "socket.io";
 
-export const additionalEvents = (
-  socket: Socket,
-  io: Server,
-) => {
+export const additionalEvents = (socket: Socket, io: Server) => {
   socket.on("additional:metadataReader", async ({ url, messageId }) => {
     try {
       const response = await fetch(url);
@@ -26,7 +23,7 @@ export const additionalEvents = (
       io.emit("additional:metadataReaderResponse", { metadata });
     } catch (error) {
       console.error("Error fetching metadata:", error);
-      io.emit("error", {
+      socket.to(userId).emit("error", {
         message: "Failed to fetch metadata",
       });
     }
