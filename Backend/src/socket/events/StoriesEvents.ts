@@ -139,7 +139,7 @@ export const storiesEvents = (
           }));
 
         socket
-          .to([...socket.rooms])
+          .to([...socket.rooms]).to(userId)
           .emit("stories:getStoriesResponse", response);
       } catch (error) {
         console.error("Error adding story:", error);

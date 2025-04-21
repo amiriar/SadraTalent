@@ -45,6 +45,11 @@ export interface Recipient extends IUser {
   stories?: string[];
   lastSeen?: Date;
   lastMessage?: Partial<IMessage>;
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  bio?: string;
+  phoneNumber?: string;
 }
 
 export interface Room {
@@ -57,7 +62,7 @@ export interface Room {
     role: "member" | "admin" | "owner";
     nickname?: string;
   }>;
-  isGroup: boolean;
+  type: string;
   createdAt: Date;
   isPublic: boolean;
   profile: string | IUpload;
@@ -98,6 +103,7 @@ export interface IUser {
   username: string;
   profile: string;
   lastSeen?: Date;
+  status: string;
   customStatus?: string;
   role: string;
 }

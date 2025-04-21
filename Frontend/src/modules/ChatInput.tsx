@@ -6,6 +6,7 @@ import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { IMessage } from "./types/types";
 import { useState, useEffect } from "react";
+import { RoomTypes } from "../shared/enum";
 
 const ChatInput = ({
   room,
@@ -29,7 +30,7 @@ const ChatInput = ({
 
   useEffect(() => {
     if (typeof room === "object") {
-      if (room.name === "General") {
+      if (room.type !== RoomTypes.Channel) {
         setInputDisabled(false);
       } else {
         const currentParticipant = room.participants.find(
@@ -188,7 +189,7 @@ const ChatInput = ({
           value={room ? message : ""}
           sx={{ fontFamily: "IranYekan" }}
           onChange={(e) => setMessage(e.target.value)}
-          disabled={inputDisabled} // Disable input if the user is not an admin or owner
+          disabled={inputDisabled}
           placeholder={
             inputDisabled
               ? "Only admins can send messages"

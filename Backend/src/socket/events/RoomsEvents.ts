@@ -1,5 +1,6 @@
 import RoomModel, { IRoom } from "@/api/admin/rooms/roomsSchema";
 import UserModel, { IUser } from "@/api/admin/user/userSchema";
+import { RoomRoles, RoomTypes } from "@/common/utils/enum";
 import { Socket, Server } from "socket.io";
 
 export const roomsEvents = (
@@ -30,9 +31,11 @@ export const roomsEvents = (
         { isDeleted: false },
       ],
     })
-      .select("_id name isGroup createdAt participants")
+      .select("_id name type createdAt participants")
       .populate("participants.user", "username profile phoneNumber")
       .lean();
+
+    socket.join(room);
 
     io.to(room).emit("rooms:newRoomResponse", userRooms);
   });
@@ -80,9 +83,7 @@ export const roomsEvents = (
         {
           ...(updatedRoom.name && { name: updatedRoom.name }),
           ...(updatedRoom.bio && { bio: updatedRoom.bio }),
-          ...(updatedRoom.hasOwnProperty("isGroup") && {
-            isGroup: updatedRoom.isGroup,
-          }),
+          ...(updatedRoom.type && { type: updatedRoom.type }),
         },
         { new: true }
       ).lean();
@@ -261,14 +262,72 @@ export const roomsEvents = (
   });
 
   socket.on("rooms:newRoom", async (data: IRoom) => {
-    const { name, isGroup = true } = data;
+    const { name, type = "group" } = data;
 
     await RoomModel.create({
       name,
       participants: [{ user: userId, role: "owner" }],
-      isGroup: isGroup,
+      type,
       isPublic: false,
     });
+
+    let rooms = await RoomModel.find({
+      $or: [
+        { isPublic: true },
+        { "participants.user": userId },
+        { isDeleted: false },
+      ],
+    })
+      .select("_id name type createdAt participants")
+      .populate("participants.user", "username"); // Populate user info
+
+    // Modify room names for private rooms
+    rooms = rooms.map((room) => {
+      if (
+        room.type === String(RoomTypes.Private) &&
+        room.name.startsWith("PV:")
+      ) {
+        const ids = room.name.replace("PV:", "").split("-");
+        const otherUserId = ids.find((id) => id !== userId); // Get the other participant
+
+        if (otherUserId) {
+          const otherUser = room.participants.find(
+            (p) => p.user._id.toString() === otherUserId
+          );
+          if (otherUser) {
+            room.name = otherUser.user.username;
+          }
+        }
+      }
+      return room;
+    });
+    io.to(userId).emit("rooms:newRoomResponse", rooms);
+  });
+
+  socket.on("rooms:newPrivateRoom", async (data: IRoom) => {
+    const { name, type = RoomTypes.Private, participants } = data;
+
+    const existingRoom = await RoomModel.findOne({
+      type: RoomTypes.Private,
+      isDeleted: false,
+      "participants.user": { $all: participants },
+      $expr: { $eq: [{ $size: "$participants" }, 2] },
+    });
+
+    if (!existingRoom) {
+      const newRoom = await RoomModel.create({
+        name,
+        participants: participants.map((participant) => ({
+          user: participant,
+          role: RoomRoles.Admin,
+        })),
+        type,
+        isPublic: false,
+      });
+      socket.join(newRoom._id.toString());
+    } else {
+      socket.join(existingRoom._id.toString());
+    }
 
     const rooms = await RoomModel.find({
       $or: [
@@ -276,9 +335,18 @@ export const roomsEvents = (
         { "participants.user": { $in: [userId] } },
         { isDeleted: false },
       ],
-    }).select("_id name isGroup createdAt participants");
+    }).select("_id name type createdAt participants");
 
-    io.to(userId).emit("rooms:newRoomResponse", rooms);
+    const otherParticipant =
+      participants
+        .find((participant) => participant.toString() !== userId)
+        ?.toString() ?? "";
+
+    console.log("other: ", otherParticipant);
+    console.log(socket.rooms);
+    
+    
+    io.to([userId, otherParticipant]).emit("rooms:newRoomResponse", rooms);
   });
 
   socket.on(

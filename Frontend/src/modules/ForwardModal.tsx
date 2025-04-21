@@ -13,8 +13,7 @@ import { FaPaperPlane } from "react-icons/fa";
 import { IUser, IMessage, Room, Sender } from "./types/types";
 import { FaUserGroup } from "react-icons/fa6";
 interface IForward {
-  offlineUsers: any[];
-  onlineUsers: any[];
+  users: any[];
   openForwardModal: any;
   handleCloseForwardModal: any;
   ModalStyle: any;
@@ -25,8 +24,7 @@ interface IForward {
 }
 
 export default function ForwardModal({
-  offlineUsers,
-  onlineUsers,
+  users,
   openForwardModal,
   handleCloseForwardModal,
   ModalStyle,
@@ -100,8 +98,8 @@ export default function ForwardModal({
           Online Users
         </Typography>
         <List>
-          {onlineUsers.length > 0 ? (
-            onlineUsers.map((user: IUser) => (
+          {users?.length > 0 ? (
+            users.map((user: IUser) => (
               <ListItem
                 key={user?._id ?? ""}
                 sx={{ display: "flex", justifyContent: "space-between" }}
@@ -146,8 +144,8 @@ export default function ForwardModal({
           Offline Users
         </Typography>
         <List>
-          {offlineUsers.length > 0 ? (
-            offlineUsers.map((user: IUser) => (
+          {users?.length > 0 ? (
+            users.map((user: IUser) => (
               <ListItem
                 key={user._id}
                 sx={{ display: "flex", justifyContent: "space-between" }}

@@ -1,6 +1,8 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 import { Message } from "../messages/messagesModel";
-import { RoomTypes } from "@/enum/RoomTypes";
+import { RoomRoles, RoomTypes } from "@/common/utils/enum";
+
+type RoomType = (typeof RoomTypes)[keyof typeof RoomTypes]; 
 
 export interface IRoom extends Document {
   _id: Types.ObjectId;
@@ -13,12 +15,10 @@ export interface IRoom extends Document {
     role: "member" | "admin" | "owner";
     nickname?: string;
   }>;
-  type: typeof RoomTypes;
-  isGroup: boolean;
+  type: RoomType; // Use extracted type here
   isPublic: boolean;
   isDeleted: boolean;
   lastMessage?: Partial<Message> | null;
-  // lastMessage: any;
 }
 
 interface ParticipantUser {
@@ -31,8 +31,8 @@ const ParticipantSchema = new Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   role: {
     type: String,
-    enum: ["member", "admin", "owner"],
-    default: "member",
+    enum: [RoomRoles.Admin, RoomRoles.User, RoomRoles.Owner],
+    default: RoomRoles.User,
   },
   nickname: { type: String, maxlength: 20 },
 });
@@ -40,12 +40,11 @@ const ParticipantSchema = new Schema({
 const RoomSchema = new Schema<IRoom>(
   {
     profile: { type: Schema.Types.ObjectId, ref: "Upload" },
-    name: { type: String, required: true, maxlength: 20 },
+    name: { type: String, required: true },
     bio: { type: String, maxlength: 200 },
     pinnedMessages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
     participants: [ParticipantSchema],
     type: { type: String, enum: Object.values(RoomTypes), required: true },
-    isGroup: { type: Boolean, required: true },
     isPublic: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
   },

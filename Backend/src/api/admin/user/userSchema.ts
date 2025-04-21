@@ -1,4 +1,4 @@
-import { Roles, Status } from "@/common/utils/enum";
+import { AppRoles, Status } from "@/common/utils/enum";
 import mongoose, { Schema, model, Document, Types } from "mongoose";
 import { IStory } from "../stories/storiesSchema";
 
@@ -7,7 +7,7 @@ export interface IUser extends Document {
   username: string;
   firstname: string;
   lastname: string;
-  role?: Roles;
+  role?: AppRoles;
   lastDateIn?: string;
   email: string;
   password: string;
@@ -29,7 +29,11 @@ const UserSchema = new Schema<IUser>(
     username: { type: String, required: false },
     firstname: { type: String, required: false },
     lastname: { type: String, required: false },
-    role: { type: String, enum: Object.values(Roles), default: Roles.User },
+    role: {
+      type: String,
+      enum: Object.values(AppRoles),
+      default: AppRoles.User,
+    },
     lastDateIn: { type: String, required: false },
     email: { type: String, required: false },
     password: { type: String, required: false },

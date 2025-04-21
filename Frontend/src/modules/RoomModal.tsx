@@ -115,7 +115,7 @@ const RoomModal: React.FC<RoomModalProps> = ({
             textAlign: "center",
           }}
         >
-          Current Room Status: {room?.isGroup ? "Group" : "Channel"}
+          Current Room Status: {room?.type === "group" ? "Group" : "Channel"}
         </Typography>
 
         <Divider sx={{ mb: 2 }} />

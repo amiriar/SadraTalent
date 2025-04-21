@@ -49,6 +49,14 @@ interface ChatAreaProps {
   setReplyMessage: (message: IMessage | null) => void;
   rooms: Room[];
   chatEndRef: React.RefObject<HTMLDivElement>;
+  profileHandler: (recipient: Recipient | null, room: Room | string) => void;
+  selectedRoom: Room | null;
+  setSelectedRoom: (room: Room | null) => void;
+  setSelectedRecipient: (recipient: Recipient | null) => void;
+  selectedRecipient: Recipient | null;
+  allUsers: Recipient[];
+  openRoomModal: boolean;
+  setOpenRoomModal: (open: boolean) => void;
 }
 
 function ChatArea({
@@ -74,6 +82,14 @@ function ChatArea({
   setReplyMessage,
   rooms,
   chatEndRef,
+  profileHandler,
+  selectedRoom,
+  setSelectedRoom,
+  setSelectedRecipient,
+  selectedRecipient,
+  allUsers,
+  openRoomModal,
+  setOpenRoomModal,
 }: ChatAreaProps) {
   const extractMetadata = (messages: IMessage[]) => {
     messages.forEach((message) => {
@@ -524,28 +540,6 @@ function ChatArea({
   }, [socket]);
 
   const [open, setOpen] = useState(false);
-  const [selectedRecipient, setSelectedRecipient] = useState<Recipient | null>(
-    null
-  );
-
-  const [openRoomModal, setOpenRoomModal] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
-
-  const profileHandler = (recipient: Recipient | null, room: Room | string) => {
-    if (recipient?.username) {
-      socket?.emit("users:getUserData", { recipientId: recipient._id });
-      socket?.on("users:getUserDataResponse", (data: Recipient) => {
-        setSelectedRecipient(data);
-        setOpen(true);
-      });
-    } else if (typeof room === "object") {
-      socket?.emit("rooms:getRoomData", room._id);
-      socket?.on("rooms:getRoomDataResponse", (data: Room) => {
-        setSelectedRoom(data);
-        setOpenRoomModal(true);
-      });
-    }
-  };
 
   const [searchModal, setSearchModal] = useState(false);
 
@@ -590,7 +584,6 @@ function ChatArea({
   const handleEditRoom = (updatedRoom: {
     name: string;
     bio: string;
-    isGroup: boolean;
   }) => {
     socket?.emit("rooms:editRoom", { room: room, ...updatedRoom });
   };
@@ -981,7 +974,8 @@ function ChatArea({
                       >
                         {msg?.replyTo?.sender?.username
                           ? msg?.replyTo?.sender?.username
-                          : msg?.replyTo?.$__?.parent?.replyTo?.sender
+                          : // @ts-ignore
+                            msg?.replyTo?.$__?.parent?.replyTo?.sender
                               ?.username}
                       </span>
                       <span
@@ -1542,8 +1536,7 @@ function ChatArea({
       />
 
       <ForwardModal
-        offlineUsers={offlineUsers}
-        onlineUsers={onlineUsers}
+        users={allUsers}
         ModalStyle={ModalStyle}
         openForwardModal={openForwardModal}
         forwardMessage={forwardMessage}
@@ -1596,7 +1589,7 @@ function ChatArea({
           setOpen={setSupportModalOpen}
           messages={messages}
           sender={sender}
-          onlineUsers={onlineUsers}
+          allUsers={allUsers}
           room={room}
           socket={socket}
           publicName={publicName}

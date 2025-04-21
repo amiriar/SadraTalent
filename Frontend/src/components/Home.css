@@ -14,15 +14,14 @@
 
 .room-btn {
   display: block;
-  margin: 10px 0;
+  margin-top: 5px;
   padding: 10px;
-  background-color: #3498db;
-  color: white;
-  border: none;
+  /* background-color: #3498db; */
+  color: black;
+  border-top: 1px solid lightgray;
+  border-bottom: 1px solid lightgray;
   cursor: pointer;
   width: 100%;
-  text-align: center;
-  border-radius: 5px;
 }
 
 .add-room-btn {

@@ -2,19 +2,20 @@ import { Drawer, Box, TextField, InputAdornment } from "@mui/material";
 import { IoCloseSharp } from "react-icons/io5";
 import { useEffect, useState } from "react";
 import { IMessage, Recipient, Room, Sender } from "./types/types";
-import { Roles } from "../shared/enum";
+import { AppRoles } from "../shared/enum";
 import { MessageBubble } from "./SupportMessageBubble";
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import { FaPlus } from "react-icons/fa";
 import SupportTopicModal from "./SupportTopicModal";
+import axios from "axios";
 
 interface SupportChatModalProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   messages: IMessage[];
   sender: Sender | null;
-  onlineUsers: Recipient[];
+  allUsers: Recipient[];
   room: Room | string;
   socket: typeof Socket | null;
   publicName: string;
@@ -27,7 +28,7 @@ export default function SupportChatModal({
   setOpen,
   messages: initialMessages,
   sender,
-  onlineUsers,
+  allUsers,
   room,
   socket,
   publicName,
@@ -45,6 +46,7 @@ export default function SupportChatModal({
         profile: "public/static/sadra.jpg",
         username: "پشتیبانی صدرا",
         role: "ADMIN",
+        status: "online",
       },
       receiver: {
         _id: "67bc260787c2c4d7009b3358",
@@ -53,6 +55,7 @@ export default function SupportChatModal({
           "public/uploads/file/persona.jpg-1740966460061-9717400d-6145-45ba-8bfa-fbd148d0907b.jpg",
         username: "پشتیبانی صدرا",
         role: "ADMIN",
+        status: "online",
       },
       content: "به سامانه پشتیبانی صدرا خوش آمدید",
       ...getDefaultMessageAttributes(),
@@ -65,6 +68,7 @@ export default function SupportChatModal({
         profile: "public/static/sadra.jpg",
         username: "پشتیبانی صدرا",
         role: "ADMIN",
+        status: "online",
       },
       receiver: {
         _id: "67bc260787c2c4d7009b3358",
@@ -73,6 +77,7 @@ export default function SupportChatModal({
           "public/uploads/file/persona.jpg-1740966460061-9717400d-6145-45ba-8bfa-fbd148d0907b.jpg",
         username: "پشتیبانی صدرا",
         role: "ADMIN",
+        status: "online",
       },
       content: "برای اتصال به یک پشتیبان، اولین پیام خود را ارسال کنید.",
       ...getDefaultMessageAttributes(),
@@ -102,8 +107,8 @@ export default function SupportChatModal({
     setMessages(getInitialMessages());
 
     const intervalId = setInterval(() => {
-      const onlineOperatorCount = onlineUsers.filter(
-        (ou) => ou.role === Roles.Support
+      const onlineOperatorCount = allUsers?.filter(
+        (ou) => ou.role === AppRoles.Support && ou.status === "online"
       ).length;
 
       const newMessage: IMessage = {
@@ -114,6 +119,7 @@ export default function SupportChatModal({
           profile: "public/static/sadra.jpg",
           username: "پشتیبانی صدرا",
           role: "ADMIN",
+          status: "online",
         },
         receiver: {
           _id: "67bc260787c2c4d7009b3358",
@@ -122,6 +128,7 @@ export default function SupportChatModal({
             "public/uploads/file/persona.jpg-1740966460061-9717400d-6145-45ba-8bfa-fbd148d0907b.jpg",
           username: "پشتیبانی صدرا",
           role: "ADMIN",
+          status: "online",
         },
         content: `تعداد پشتیبان های آنلاین: ${onlineOperatorCount}`,
         ...getDefaultMessageAttributes(),
@@ -138,7 +145,7 @@ export default function SupportChatModal({
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [onlineUsers]);
+  }, [allUsers]);
 
   const [message, setMessage] = useState("");
 
@@ -208,21 +215,17 @@ export default function SupportChatModal({
     setSelectSupportTopicModal(true);
   };
 
-  const topics = [
-    {
-      id: "1",
-      name: "Technical Support",
-      operators: [
-        { id: "op1", name: "Alice", isOnline: true },
-        { id: "op2", name: "Bob", isOnline: false },
-      ],
-    },
-    {
-      id: "2",
-      name: "Billing",
-      operators: [{ id: "op3", name: "Charlie", isOnline: true }],
-    },
-  ];
+  const [topics, setTopics] = useState([]);
+  const getTopics = async () => {
+    await axios
+      .get(
+        "https://localhost:44311/api/services/app/v1/Tickets/GetAllTicketCategories"
+      )
+      .then((res) => {
+        setTopics(res.data.result);
+      });
+  };
+  getTopics();
 
   return (
     <>

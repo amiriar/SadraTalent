@@ -1,5 +1,5 @@
 import Modal from "@mui/material/Modal";
-import React, { useState } from "react";
+import React from "react";
 import { FaPlus } from "react-icons/fa";
 import Box from "@mui/material/Box";
 import { Socket } from "socket.io-client";
@@ -11,7 +11,7 @@ interface Operator {
 
 interface Topic {
   id: string;
-  name: string;
+  title: string;
   operators: Operator[];
 }
 
@@ -70,15 +70,12 @@ const SupportTopicModal: React.FC<SupportTopicModalProps> = ({
             <tbody>
               {topics.map((topic) => (
                 <tr key={topic.id}>
-                  <td>{topic.name}</td>
-                  <td>
-                    {topic.operators.filter((op) => op.isOnline).length}{" "}
-                    available
-                  </td>
+                  <td>{topic.title}</td>
+                  <td>{topic.operators.length} available</td>
                   <td>
                     <button
                       onClick={() => handleJoin(topic.id)}
-                      disabled={!topic.operators.some((op) => op.isOnline)}
+                      disabled={topic.operators.length == 0}
                     >
                       Join
                     </button>
